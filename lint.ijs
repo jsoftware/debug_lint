@@ -187,7 +187,12 @@ NB. display them in a grid, along with the source lines
 if. #emsgs do.
   NB. Collect multiple errors per line into one big emsg, with LF in between
   emsgs =. ({."1 (~.@[ ,. <@}:@;@:(,&LF&.>)/.) 1&{"1) emsgs
-  grid (((":#emsgs),' errors found in');sourcefn) , ((1&{"1 emsgs) (0&{::"1 emsgs)} (#lines) # <'') ,. lines
+  gridopts =. ,: 'CELLCOLORS';0 0 0 240 240 240 ,: 255 0 0 240 240 240
+  gridopts =. gridopts , 'CELLCOLOR';1 0
+  gridopts =. gridopts , 'CELLFONTS';< '"Courier New" 10';'"Arial" 10'
+  gridopts =. gridopts , 'CELLFONT';1 0
+  gridopts =. gridopts , 'HDRROW';0
+  gridopts grid (((":#emsgs),' errors found in');sourcefn) , ((1&{"1 emsgs) (0&{::"1 emsgs)} (#lines) # <'') ,. lines
 else.
   smoutput 'No errors found'
 end.
@@ -917,7 +922,7 @@ for_l. |. }. qname do.
   if. 1 = #'type loc' =. (loc;<defnames) lookupname l do.  <'' return. end.
   NB. verify the new locale is a single boxed string
   if. noun ~: type do. <'' return. end.
-  loc =. (<loc) 5!:0   NB. Convert string form of value to real form
+  loc =. (<loc) 5!:0   NB.?lintonly loc =. 0 NB. Convert string form of value to real form
   if. 1 ~: */ $ loc do.  <'' return. end.
   if. 2 ~: 3!:0 > loc do.  <'' return. end.
   if. 1 < $ $ > loc do.  <'' return. end.
