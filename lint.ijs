@@ -165,7 +165,7 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
     persistentnames =: 0 3$a:
 
     NB. Init no verbose typeout
-    debuglevel =: 0
+    debuglevel =: 00
 
     NB. Init the table of message-control commands.  Nonneg means messages on, negative means off.
     NB. We start with messages enabled.  The setting applies to the number in the list, which
