@@ -4,7 +4,6 @@ VERSION=: '1.0.0'
 PLATFORMS=: ''
 FILES=: 0 : 0
 lint.ijs
-doc/readme.txt
 )
 RELEASE=: 'j602 j701'
 DEPENDS=: 0 : 0
