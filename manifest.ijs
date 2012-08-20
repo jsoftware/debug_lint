@@ -18,4 +18,6 @@ during debugging.  The errors it looks for are:
  non-noun results at the end of condition blocks and verbs
  syntax errors
  sentences with no effect on execution (eg verb verb)
+
+See the program header for description and directives.
 )

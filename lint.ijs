@@ -64,7 +64,8 @@ NB.-  valid value for a name during checking, to avoid a syntax error.
 NB.- NB.?lintsaveglobals   Any global names that have been set by the current definition will be added
 NB.-  to a list of such names that is passed in to later definitions.  Use this when one verb is
 NB.-  known to be executed before others, and creates globals that the later verbs depend on.  Use
-NB.-  in concert with NB.lintonly to solve other problems of initialization
+NB.-  in concert with NB.lintonly to solve other problems of initialization.  Note that the definitions are the
+NB.-  ones in effect when the directive is scanned.
 NB.-usage: lint filenames...
 NB.-y: The names of the scripts to be checked.  For the nonce, only one script will be checked
 NB.-result: Table of (line number);(error message) for each error.  If there is no error, a
