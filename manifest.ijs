@@ -1,4 +1,4 @@
-NB. manifest for FFTW
+NB. manifest for lint
 CAPTION=: 'Load a script and check its syntax'
 VERSION=: '1.0.0'
 PLATFORMS=: ''
