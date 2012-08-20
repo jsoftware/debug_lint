@@ -11,7 +11,7 @@ DEPENDS=: 0 : 0
 )
 DESCRIPTION=: 0 : 0
 lint tries to find errors before a script is run.  The idea is for 'lint' to replace 'load'
-during debugging.  The errors it looks for are:
+during debugging.  The errors it looks for are the following:
  explicit definitions lacking trailing )
  undefined names, including names not defined in all paths
  verbs used with invalid valences

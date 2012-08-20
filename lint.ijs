@@ -8,7 +8,7 @@ NB.  exppatt regex pattern for finding explicit definitions
 NB. TODO:
 NB. translate internal names back into primitives for postmortem
 NB. check for side effect of inverse
-NB. Label Grid window in case multiple scripts
+NB. Label grid window in case multiple scripts
 NB. handle multiple scripts, with chaining of globals?
 NB. Run on all system scripts
 NB. do better with gerunds
