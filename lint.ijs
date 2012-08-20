@@ -43,7 +43,7 @@ NB.- If a verb uses global variables defined in another verb, the dependent verb
 NB.- defining verb in the script, and the NB.?lintsaveglobals directive should be used (see below).
 NB.- Any verb named 'create' or whose name ends with '_run' will automatically its globals made
 NB.- available to subsequent definition as if NB.?lintsaveglobals had been the last sentence of
-NB.- the verb.
+NB.- the verb. 
 NB.-
 NB.- Any changes to the locale must be made using the 'cocurrent' or 'coclass' verbs.  The
 NB.- starting locale is 'base'.
