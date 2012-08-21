@@ -18,7 +18,13 @@ NB. need to keep track of which source words the stacked items come from
 cocurrent 'lint'
 require 'regex'
 require 'strings'
+3 : 0 ''
+if. IFJ6 do. IFGTK =. -. IFCONSOLE end.
+if. IFGTK do.
 require 'grid'
+end.
+''
+)
 
 NB.*lint v check syntax of a script and load it
 NB.-descrip: Load a J script and perform static analysis
