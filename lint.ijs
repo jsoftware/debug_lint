@@ -189,7 +189,8 @@ if. #emsgs do.
   if. IFJ6 do. IFGTK =. -. IFCONSOLE end.
   if. IFGTK do.
     NB. Collect multiple errors per line into one big emsg, with LF in between
-    emsgs =. ({."1 (~.@[ ,. <@}:@;@:(,&LF&.>)/.) 1&{"1) emsgs
+    NB. Put messages for all parts of the same line into the line, by removing fractional part of line
+    emsgs =. (<.&.>@{."1 (~.@[ ,. <@}:@;@:(,&LF&.>)/.) 1&{"1) emsgs
     gridopts =. ,: 'CELLCOLORS';0 0 0 240 240 240 ,: 255 0 0 240 240 240
     gridopts =. gridopts , 'CELLCOLOR';1 0
     gridopts =. gridopts , 'CELLFONTS';< '"Courier New" 10';'"Arial" 10'
@@ -263,8 +264,10 @@ NB. tokenize each line and remove comments - except for lint directives
 lines =. }:^:(1 0 -: ('NB.';'NB.?lint') ([ -: #@[ {. ])&> {:)@;:&.> lines
 NB. for each line, find control words; then recollect sentences between control words; then
 NB. append the line number of the line. run all the blocks together.  This deletes empty sentences, too
+NB. For multiple blocks on the same line (caused by control words), give them fractional parts to
+NB. distinguish them
 iscw =. ('NB.' -: 3&{.)@> +. e.&controlwords@(('_'&taketo)@}:&.>) *. ('.'={:)@>  NB. verb, applied to boxed word.  Any remaining comment must be a lint directive
-if. #nl =. ; (stline + i. # lines) (;"0  (<@(;:^:_1);.1~ (+. |.!.1)@iscw))&.> lines do.
+if. #nl =. ; (stline + i. # lines) ( ( (+   (%~ i.)@#)~  ;"0   [ )~  (<@(;:^:_1);.1~ (+. |.!.1)@iscw))&.> lines do.
   NB. assert. is funny: it takes one sentence, which may be in the current line or the next line.
   NB. We will discard assert. blocks, since they may not be executed depending on global settings; so we
   NB. delete assert. and the sentence following.
