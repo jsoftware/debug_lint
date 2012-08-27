@@ -72,15 +72,18 @@ NB.-  to a list of such names that is passed in to later definitions.  Use this 
 NB.-  known to be executed before others, and creates globals that the later verbs depend on.  Use
 NB.-  in concert with NB.lintonly to solve other problems of initialization.  Note that the definitions are the
 NB.-  ones in effect when the directive is scanned.
-NB.-usage: lint filenames...
+NB.-usage: [msglevel] lint filenames...
 NB.-y: The names of the scripts to be checked.  For the nonce, only one script will be checked
 NB.-result: Table of (line number);(error message) for each error.  If there is no error, a
 NB.- congratulatory message is typed; if errors are found, a grid is launched to display the result
+NB.- if msglevel=0 (default), the error messages are emptied if a grid is displayed; if msglevel=1, the errors
+NB.- are always returned
 NB.-author: Henry H. Rich, August 2012
 NB.-eg: lint '~addons\math\misc\amoeba.ijs'
 lint =: 3 : 0
 0 lint y
 :
+msglevel =. x
 fls=. getscripts_j_ y
 
 NB. Read in the script, cut to lines with LF removed
@@ -129,7 +132,7 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
       smoutput 'Control error during load.  The message was:',LF,sysstg
       smoutput 'This means that the indicated line number of the indicated function is an invalid control.'
       smoutput 'If the function is bivalent, you need to check both valences'
-      1 return.
+      emsgs return.
     elseif.
     lineno =. _100000
     if. LF = {: sysstg do.
@@ -140,7 +143,7 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
       emsgs =. emsgs , lineno ; syserr , ' encountered during loading the file'
     elseif. do.
       smoutput 'Unexpected error during load.  The message was:',LF,sysstg
-      1 return.
+      emsgs return.
     end.
   end.
   if. 0 = #emsgs do.  NB. If no errors, continue checking
@@ -154,8 +157,8 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
 
     NB. If no externals, quit... but it's suspicious
     if. 0 = #expnames do.
-      smoutput 'No explicit definitions found!  I quit.'
-      1 return.
+      smoutput 'No explicit definitions found.'
+      emsgs return.
     end.
     NB. Bring in the lines that are lint-only lines.  Remove the header, leaving the space.  We don't load
     NB. the lint-only lines, because we want to be able to use lint as a replacement for load
@@ -203,6 +206,8 @@ if. #emsgs do.
     gridopts =. gridopts , 'CELLFONT';1 0
     gridopts =. gridopts , 'HDRROW';< ' ' ; <@":"0 i. # lines
     gridopts grid (((":#emsgs),' errors found in');sourcefn) , ((1&{"1 emsgs) (0&{::"1 emsgs)} (#lines) # <'') ,. lines
+    NB. If messages have gone to grid, don't return them, unless asked for
+    if. msglevel = 0 do. emsgs =. 0 2$a: end.
   end.
 else.
   smoutput 'No errors found'
