@@ -72,6 +72,7 @@ NB.-  to a list of such names that is passed in to later definitions.  Use this 
 NB.-  known to be executed before others, and creates globals that the later verbs depend on.  Use
 NB.-  in concert with NB.lintonly to solve other problems of initialization.  Note that the definitions are the
 NB.-  ones in effect when the directive is scanned.
+NB.- NB.?lintloopbodyalways  in the B block of for. or while., indicates that the loop body is always executed
 NB.-usage: [msglevel] lint filenames...
 NB.-y: The names of the scripts to be checked.  For the nonce, only one script will be checked
 NB.-result: Table of (line number);(error message) for each error.  If there is no error, a
@@ -243,8 +244,9 @@ NB. if noun or unknown type, give error
 if. exptype > 3 do.  NB. 0123 = adv conj verb dyad
   ,: lineno ; 'Undecipherable explicit definition' return.
 end.
-NB. set the locale name to use for this verb, and initial values for noun-result and nugatory sentence
-defnames =. persistentnames addnames ('$LOC';'$NNU') ,. (<$0) ,. ('_' taketo&.|. }: name) ;< 2#<$0
+NB. set the locale name to use for this verb, and initial values for noun-result and nugatory sentence, and the loopbodyalways stack
+NB. The LBA stack is inited to nonempty so that a misplaced loopbodyalways will not cause index error
+defnames =. persistentnames addnames ('$LOC';'$NNU';'$LBA') ,. (<$0) ,. ('_' taketo&.|. }: name) ; (2#<$0) ;< ,0
 
 NB. split into valences
 valences =. (<,':')&([ ((-: -.&' ')&> <;._1 ]) ,) lines
@@ -547,12 +549,16 @@ if. 0 ~: # 0 {:: r =. 1{:: ('';<tivars) lookupname <'$NNU' do.
 end.
 nugatories =: nugatories -. 1 {:: r
 tivars =. tivars addnames '$NNU' ; ($0) ;< startnnu
+NB. Push onto the LBA stack
+tivars =. tivars addnames '$LBA' ; ($0) ;< 0 ,~ startlba =. 1 {:: ('';<ivars) lookupname <'$LBA'
 if. 1 >: #'b1ivars b1bvars b1rvars nemsgs' =. cparse_statement tivars;tbvars;<trvars do. a: return. end.
 emsgs =. emsgs , nemsgs
 if. 'end' -.@-: 1 {:: readblock'' do. a: return. end.  NB. consume the block-end
-if. -. emptytblock do. 'b1ivars b1bvars b1rvars' =. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
+NB. Treat loopbodyalways like empty T-block
+if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do. 'b1ivars b1bvars b1rvars' =. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
 NB. The break info contains all the other ways to get to end-of-loop; include them and reset
-(b1ivars namesintersectu b1bvars);(0 3$a:);b1rvars;<emsgs
+NB. Pop the LBA stack, too
+((b1ivars namesintersectu b1bvars) addnames '$LBA' ; ($0) ;< startlba);(0 3$a:);b1rvars;<emsgs
 )
 
 NB. whilst do end
@@ -593,8 +599,6 @@ NB. The break info contains all the other ways to get to end-of-loop; include th
 (ivars namesintersectu bvars);(0 3$a:);rvars;<emsgs
 )
 
-
-
 NB. for[_...] do end
 NB. like while, except that in the for_x form we define local x and x_index as nouns, and delete them
 NB. after the end statement
@@ -613,14 +617,18 @@ end.
 nugatories =: nugatories -. 1 {:: r
 NB. add the names, if they are called for
 tivars =. tivars addnames ('$NNU' ; ($0) ;< startnnu) , (*#vname) # (vnames =. vname&,&.>'';'_index') ,"0 1 noun ; ''
+NB. Push onto the LBA stack
+tivars =. tivars addnames '$LBA' ; ($0) ;< 0 ,~ startlba =. 1 {:: ('';<ivars) lookupname <'$LBA'
 if. 1 >: #'b1ivars b1bvars b1rvars nemsgs' =. cparse_statement tivars;tbvars;<trvars do. a: return. end.
 emsgs =. emsgs , nemsgs
 if. 'end' -.@-: 1 {:: readblock'' do. a: return. end.  NB. consume the block-end
-if. -. emptytblock do. 'b1ivars b1bvars b1rvars' =. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
+NB. Treat loopbodyalways like empty T-block
+if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do. 'b1ivars b1bvars b1rvars' =. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
 NB. If the temp names were defined, remove them from the inline vbls.  This will also remove them from the intersection.
 NB. They may remain in the return vbls, which doesn't matter since they are locals and will be deleted at the end
 if. #vname do. b1ivars =. b1ivars delnames vnames end.
-(b1ivars namesintersectu b1bvars);(0 3$a:);b1rvars;<emsgs
+NB. Pop the LBA stack, too
+((b1ivars namesintersectu b1bvars) addnames '$LBA' ; ($0) ;< startlba);(0 3$a:);b1rvars;<emsgs
 )
 
 NB. select T [f]case T do. B ...
@@ -786,6 +794,10 @@ case. 'NB.?lintdebug1' do.
   debuglevel =: 1
 case. 'NB.?lintdebug2' do.
   debuglevel =: 2
+case. 'NB.?lintloopbodyalways' do.
+  ivars =. 0 {:: ibr
+  ivars =. ivars addnames '$LBA' ; ($0) ;< 1 (_1)} 1 {:: ('';<ivars) lookupname <'$LBA'
+  ibr =. (<ivars) 0} ibr
 case. do.
   emsgs =. emsgs , lineno ; 'Unrecognized lint directive'
 end.
@@ -887,40 +899,41 @@ fcase. 3 do.
   end.
   y =. <'x'
 case. do.
-NB. for verb/adverb/noun, create linear form; if multiple lines, it's unsafe (explicit defn)
-  l =. 5!:5 y  NB. linear form
-  NB. Look at the first line.  If it contains any names, somehow f. couldn't figure out what
-  NB. is happening, and neither can we.  Make the result unsafe
-  if. +./ isname@> bl =. ;: LF taketo l do. (sideeff + t { (noun,adv,conj,verb)) ; ''
-  NB. if multiple lines, it's unsafe (must be explicit defn), but we can still try to figure out its valences
-  elseif. LF e. l do.
-    NB. Find the occurrences of : 0 in the first line
-    loc0 =. >: I. 2 (;:':0')&-:\ bl
-    NB. Remove empty lines; classify each line as : ) neither
-    lc =. (,.':)')&(]@i.);._2 (#~   -.@(*. _1&|.)@(LF&=)) R   =: LF ,~ LF takeafter l  NB. ]@i. J602 bug
-    NB. Now, looking at the sections ending in 1=), there is a monad (1) if the first line is not 0=:,
-    NB. and a dyad (2) if any line other than the last is 0=:.  Calculate that.
-    valences =. (((0 ~: {.) + 2 * 0 e. }:);._2~ (1&=)) lc
-    NB. sections are in each :0: 1 (monad only), 2 (dyad only), 3 (both)
-    NB. Now figure out, for each definition, whether it contains a reference to x or y.  Set a flag (4) if so,
-    NB. to indicate that if this is used in a modifier, it will create an explicit verb
-    NB. Must remove comments from the definition, in case they were not suppressed
-    modexplicit =. (2&((;:LF,')')&-:\)   (4 * (;:'x y')&(+./@:e.));._2    }:) ;: ; (<@(,&LF)@(}:^:('NB.' -: 3 {. >@{:)&.;:));._2 LF ,~ LF takeafter l
-    NB. Replace each :0 with : #sections.  That is our private valence tag
-    NB. Make the first line (only) the unparsed value.  When it is parsed, we will
-    NB. execute the :1 :2 :3 to set the missing-valence bits.  The result of that parse will be
-    NB. an unknown verb, but it will have known valences.  We add 8 to say that we have set the bits,
-    NB. even if no valences were valid
-    if. loc0 =&# valences do. bl =. (<@":"0 valences+modexplicit+8) loc0} bl end.
-    unparsed ;< bl
-  NB. If it's all symbols, we can put it on the stack for parsing.  Mark the entity as 'unparsed'
-  NB. and return the boxed words as the value
-  elseif. do. unparsed ;< bl
-  NB. We could perform more detailed analysis of modifiers, especially one-liners that
-  NB. use only u and v
-  NB. If it contains a possibly-executing primitive, fire up the parser to run against the one line.
-  NB. Use the value it returns (it will be the correct part of speech with safety flags set)
-  NB. No infinite loop possible, since we only check names, and this recursion has no names
+NB. for verb/adverb/conj, create linear form; if multiple lines, it's unsafe (explicit defn)
+  try.
+    l =. 5!:5 y  NB. linear form
+    NB. Look at the first line.  If it contains any names, somehow f. couldn't figure out what
+    NB. is happening, and neither can we.  Make the result unsafe
+    if. +./ isname@> bl =. ;: LF taketo l do. (sideeff + t { (noun,adv,conj,verb)) ; ''
+    NB. if multiple lines, it's unsafe (must be explicit defn), but we can still try to figure out its valences
+    elseif. LF e. l do.
+      NB. Find the occurrences of : 0 in the first line
+      loc0 =. >: I. 2 (;:':0')&-:\ bl
+      NB. Remove empty lines; classify each line as : ) neither
+      lc =. (,.':)')&(]@i.);._2 (#~   -.@(*. _1&|.)@(LF&=)) R   =: LF ,~ LF takeafter l  NB. ]@i. J602 bug
+      NB. Now, looking at the sections ending in 1=), there is a monad (1) if the first line is not 0=:,
+      NB. and a dyad (2) if any line other than the last is 0=:.  Calculate that.
+      valences =. (((0 ~: {.) + 2 * 0 e. }:);._2~ (1&=)) lc
+      NB. sections are in each :0: 1 (monad only), 2 (dyad only), 3 (both)
+      NB. Now figure out, for each definition, whether it contains a reference to x or y.  Set a flag (4) if so,
+      NB. to indicate that if this is used in a modifier, it will create an explicit verb
+      NB. Must remove comments from the definition, in case they were not suppressed
+      modexplicit =. (2&((;:LF,')')&-:\)   (4 * (;:'x y')&(+./@:e.));._2    }:) ;: ; (<@(,&LF)@(}:^:('NB.' -: 3 {. >@{:)&.;:));._2 LF ,~ LF takeafter l
+      NB. Replace each :0 with : #sections.  That is our private valence tag
+      NB. Make the first line (only) the unparsed value.  When it is parsed, we will
+      NB. execute the :1 :2 :3 to set the missing-valence bits.  The result of that parse will be
+      NB. an unknown verb, but it will have known valences.  We add 8 to say that we have set the bits,
+      NB. even if no valences were valid
+      if. loc0 =&# valences do. bl =. (<@":"0 valences+modexplicit+8) loc0} bl end.
+      unparsed ;< bl
+    NB. If it's all symbols, we can put it on the stack for parsing.  Mark the entity as 'unparsed'
+    NB. and return the boxed words as the value
+    elseif. do. unparsed ;< bl
+    end.
+  catch.
+     NB. If there was an error accessing the name (preobably out of memory converting a huge name to string form), make it
+     NB. a side-effectful unknown of the correct type
+    (sideeff + t { (noun,adv,conj,verb)) ; ''
   end.
 end.
 )
