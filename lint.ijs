@@ -93,7 +93,7 @@ lines =. <;._2 CR -.~ LF ,~^:(~: {:) 1!:1 sourcefn =. {. fls
 NB. Find the starts of explicit definitions: define (not assignment)  or : 0
 NB. Discard comment if any, convert TAB to spaces
 NB. Change this to accommodate other patterns
-estartx =. I. _1 ~: (<0 0)&{::@(exppatt&rxmatch)@> }:^:('NB.' -: 3 {. >@{:)&.;:&.> lines
+estartx =. I. _1 ~: (<0 0)&{::@(exppatt&rxmatch)@> }:^:('NB.' -: 3 {. >@{:)&.;: :: (''"_)&.> lines
 
 NB. Find the ends of explicit definitions: ')' by itself
 eendx =. I. ((,')') -: -.&' ')@> lines
@@ -184,7 +184,7 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
 
     NB. check each explicit name, creating list of errors
     emsgs =. emsgs , ; <@checkexplicitdefs expdefs
-
+EM   =: emsgs
     NB. Remove any error messages that were disabled by directive
     emsgs =. emsgs #~ 0 <: ((/: |) messageenable) (<:@(I.~ |)~ { [) >: > 0 {"1 emsgs
 
@@ -542,10 +542,13 @@ readblock''
 startnnu =. 1 {:: ('';<ivars) lookupname <'$NNU'
 emptytblock =. (<'do') -: peekblock''
 tivars =. ivars addnames '$NNU' ; ($0) ;< 2#<$0
-if. 1 >: #'tivars tbvars trvars emsgs' =. cparse_statement tivars;bvars;<rvars do. a: return. end.
+NB. Now we are in recursion on the break vars.  The old ones in bvars will be restored when we finish
+NB. This control structure.  We are uncertain about how to handle break in a T block.  Start this structure
+NB. with a fresh set of break vars
+if. 1 >: #'tivars tbvars trvars emsgs' =. cparse_statement tivars;(0 3$a:);<rvars do. a: return. end.
 if. 'do' -.@-: 1 {:: r =. readblock'' do. a: return. end.
 if. 0 ~: # 0 {:: r =. 1{:: ('';<tivars) lookupname <'$NNU' do.
-  emsgs =. emsgs , (0{r) , < 'the test block must produce a noun value'
+  emsgs =. emsgs , (0{::r) ;"0 < 'the test block must produce a noun value'
 end.
 nugatories =: nugatories -. 1 {:: r
 tivars =. tivars addnames '$NNU' ; ($0) ;< startnnu
@@ -554,11 +557,19 @@ tivars =. tivars addnames '$LBA' ; ($0) ;< 0 ,~ startlba =. 1 {:: ('';<ivars) lo
 if. 1 >: #'b1ivars b1bvars b1rvars nemsgs' =. cparse_statement tivars;tbvars;<trvars do. a: return. end.
 emsgs =. emsgs , nemsgs
 if. 'end' -.@-: 1 {:: readblock'' do. a: return. end.  NB. consume the block-end
+NB. Now that we are exiting the block, we need to combine the break and fallthrough paths.  We do this first,
+NB. because if the loop ends with break, we will have cleared the fallthrough variables in expectation of their being intersected.  so do it.
+b1ivars =. b1ivars namesintersectu b1bvars
+NB. If empty T block, we don't need to worry about that path through.  Treat loopbodyalways like empty T-block
+if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do.
+  tivars =. tivars namesintersectu tbvars
+  'b1ivars b1rvars' =. (tivars;<trvars) namesintersect (b1ivars;<b1rvars)
+end.
 NB. Treat loopbodyalways like empty T-block
 if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do. 'b1ivars b1bvars b1rvars' =. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
 NB. The break info contains all the other ways to get to end-of-loop; include them and reset
 NB. Pop the LBA stack, too
-((b1ivars namesintersectu b1bvars) addnames '$LBA' ; ($0) ;< startlba);(0 3$a:);b1rvars;<emsgs
+(b1ivars addnames '$LBA' ; ($0) ;< startlba);bvars;b1rvars;<emsgs
 )
 
 NB. whilst do end
@@ -579,24 +590,27 @@ NB. Restore the globals; keep the read pointer
 NB. We'd better be at a do.
 if. 'do' -.@-: 1 {:: r =. readblock'' do. a: return. end.
 NB. parse the B block.  Keep all its variables, since the T always follows the B
-if. 1 >: #'ivars bvars rvars emsgs' =. cparse_statement ivars;bvars;<rvars do. a: return. end.
+NB. Now we are in recursion on the break vars.  The old ones in bvars will be restored when we finish
+NB. This control structure.  We are uncertain about how to handle break in a T block.  Start this structure
+NB. with a fresh set of break vars
+if. 1 >: #'b1ivars b1bvars b1rvars emsgs' =. cparse_statement ivars;(0 3$a:);<rvars do. a: return. end.
 NB. We'd better be at end.
 if. 'end' -.@-: 1 {:: readblock'' do. a: return. end.  NB. consume the block-end
 NB. Remember where to resume after the end
 Bend =. readblockx
 NB. reset the read pointer.  Reprocess the T block, remembering its results this time
 readblockx =: Tstart
-if. 1 >: #'ivars bvars rvars nemsgs' =. cparse_statement ivars;bvars;<rvars do. a: return. end.
+if. 1 >: #'b1ivars b1bvars b1rvars nemsgs' =. cparse_statement b1ivars;b1bvars;<b1rvars do. a: return. end.
 emsgs =. emsgs , nemsgs
 NB. Audit the results for valid T-block end
-if. 0 ~: # 0 {:: r =. 1{:: ('';<ivars) lookupname <'$NNU' do.
-  emsgs =. emsgs , (0{r) , < 'the test block must produce a noun value'
+if. 0 ~: # 0 {:: r =. 1{:: ('';<b1ivars) lookupname <'$NNU' do.
+  emsgs =. emsgs , (0{::r) ;"0 < 'the test block must produce a noun value'
 end.
 nugatories =: nugatories -. 1 {:: r
 NB. Reset the read pointer to after the end
 readblockx =: Bend
 NB. The break info contains all the other ways to get to end-of-loop; include them and reset
-(ivars namesintersectu bvars);(0 3$a:);rvars;<emsgs
+(b1ivars namesintersectu b1bvars);bvars;rvars;<emsgs
 )
 
 NB. for[_...] do end
@@ -609,7 +623,10 @@ vname =. '_' takeafter 1 {:: readblock''
 startnnu =. 1 {:: ('';<ivars) lookupname <'$NNU'
 emptytblock =. (<'do') -: peekblock''
 tivars =. ivars addnames '$NNU' ; ($0) ;< 2#<$0
-if. 1 >: #'tivars tbvars trvars emsgs' =. cparse_statement tivars;bvars;<rvars do. a: return. end.
+NB. Now we are in recursion on the break vars.  The old ones in bvars will be restored when we finish
+NB. this control structure.  We are uncertain about how to handle break in a T block.  Start this structure
+NB. with a fresh set of break vars
+if. 1 >: #'tivars tbvars trvars emsgs' =. cparse_statement tivars;(0 3$a:);<rvars do. a: return. end.
 if. 'do' -.@-: 1 {:: r =. readblock'' do. a: return. end.
 if. 0 ~: # 0 {:: r =. 1{:: ('';<tivars) lookupname <'$NNU' do.
   emsgs =. emsgs , (0{::r) ;"0 < 'the test block must produce a noun value'
@@ -622,13 +639,19 @@ tivars =. tivars addnames '$LBA' ; ($0) ;< 0 ,~ startlba =. 1 {:: ('';<ivars) lo
 if. 1 >: #'b1ivars b1bvars b1rvars nemsgs' =. cparse_statement tivars;tbvars;<trvars do. a: return. end.
 emsgs =. emsgs , nemsgs
 if. 'end' -.@-: 1 {:: readblock'' do. a: return. end.  NB. consume the block-end
-NB. Treat loopbodyalways like empty T-block
-if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do. 'b1ivars b1bvars b1rvars' =. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
+NB. Now that we are exiting the block, we need to combine the break and fallthrough paths.  We do this first,
+NB. because if the loop ends with break, we will have cleared the fallthrough variables in expectation of their being intersected.  so do it.
+b1ivars =. b1ivars namesintersectu b1bvars
+NB. If empty T block, we don't need to worry about that path through.  Treat loopbodyalways like empty T-block
+if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do.
+  tivars =. tivars namesintersectu tbvars
+  'b1ivars b1rvars' =. (tivars;<trvars) namesintersect (b1ivars;<b1rvars)
+end.
 NB. If the temp names were defined, remove them from the inline vbls.  This will also remove them from the intersection.
 NB. They may remain in the return vbls, which doesn't matter since they are locals and will be deleted at the end
 if. #vname do. b1ivars =. b1ivars delnames vnames end.
 NB. Pop the LBA stack, too
-((b1ivars namesintersectu b1bvars) addnames '$LBA' ; ($0) ;< startlba);(0 3$a:);b1rvars;<emsgs
+(b1ivars addnames '$LBA' ; ($0) ;< startlba);bvars;b1rvars;<emsgs
 )
 
 NB. select T [f]case T do. B ...
@@ -688,7 +711,7 @@ while. do.
   NB. 2 ways: from the B above or the T, and we account for that
   tivars =. tivars addnames '$NNU' ; ($0) ;< startnnu
   if. prevfcase do.
-    if. 1 >: #'b2ivars b2bvars b2rvars nemsgs' =. cparse_statement (b2ivars;b2bvars;<b2rvars) namesintersect tivars;tbvars;<trvars do. a: return. end.
+    if. 1 >: #'b2ivars b2bvars b2rvars nemsgs' =. cparse_statement (tivars;tbvars;<trvars) namesintersect b2ivars;b2bvars;<b2rvars do. a: return. end.
   else.
     if. 1 >: #'b2ivars b2bvars b2rvars nemsgs' =. cparse_statement tivars;tbvars;<trvars do. a: return. end.
   end.
@@ -746,7 +769,7 @@ NB. read the control word
 'lineno cw' =. readblock''
 emsgs =. 0 2$a:
 NB. take the new checkpoint of variables, and apply that to the indicated status
-ibr =. (0 namesintersect&({&ibr) x) x} ibr
+ibr =. (x namesintersect&({&ibr) 0) x} ibr
 NB. If the next word is end-of-block, clear the inline history to indicate that there is no inline
 if. controlwordsend e.~ peekblock'' do.
   ibr =. (<0 3$a:) 0} ibr
@@ -881,8 +904,8 @@ typeval =: (+  (noun,adv,conj,verb) {~ 4!:0) ; (5!:1)@]
 NB. Same, but search definition of name for unsafe sequences; set unsafe flags as called for
 typevalsafe =: 3 : 0
 select. t =. 4!:0 y
-NB. If the name is a noun, keep it.
-case. 0 do. noun ; 5!:1 y
+NB. If the name is a noun, keep it.  If we fail reading the name (memory error?), use 'unknown'
+case. 0 do. noun ; 5!:1 :: (<''"_) y
 NB. if the name is a verb, first fix the verb to resolve names as much as possible
 fcase. 3 do.
   NB. Before we fix the name, we need to switch to its locale (which must be present).  And, it is
@@ -952,7 +975,8 @@ NB. start off by using the current locale as if it had come from a typeval
 for_l. |. }. qname do.
   if. 1 = #'type loc' =. (loc;<defnames) lookupname l do.  <'' return. end.
   NB. verify the new locale is a single non-empty boxed string with rank <: 1
-  if. noun ~: type do. <'' return. end.
+  if. noun ~: type do. <'' return. end.   NB. If not a noun, that's alocale error
+  if. loc -: '' do. <'' return. end.   NB. if undefined, that's a locale error too
   loc =. (<loc) 5!:0   NB.?lintonly loc =. 0 NB. Convert string form of value to real form
   if. 1 ~: */ $ loc do.  <'' return. end.  
   if. 2 ~: 3!:0 > loc do.  <'' return. end.
@@ -981,11 +1005,13 @@ end.
 NB. Split the name into name and locale.  If we were looking for a local name, use the default locale
 if. '_' = {: > y do.
   nm =. ({.~ i:&'_') }: > y
-  NB. If the locale for some reason does not exist, return undefined
-  if. 0 = # loc =. (>:#nm) }. }: > y do. a: return. end.
+  loc =. (>:#nm) }. }: > y
 else.
   nm =. >y  NB. keep loc
 end.
+NB. If the locale for some reason does not exist, return undefined
+if. 0 = # loc do. a: return. end.
+
 NB. now nm and loc are strings
 
 NB. Get the search path for this locale, including the locale itself
@@ -1007,8 +1033,15 @@ end.
 
 NB. add name;type;value to list, and coalesce duplicates.  If new name multiply defined, keep the last
 NB. x is list, y is new table or list
+addnames   =: 4 : 0
+l =. x (#~ ~:@:({."1))@|.@, y
+if. 0 e. 1 2 4 8 e.~ 3!:0&> 1 {"1 l do.
+qprintf 'x y '
+13!:8 (4)
+end.
+l
+)
 addnames =: (#~ ~:@:({."1))@|.@,
-
 NB. delete name from list.  x is name table, y is list of names
 delnames =: [ #~ {."1@[ -.@:e. ]
 
@@ -1066,6 +1099,19 @@ nomonads =: ;:'[: E.'
 NB. List of verbs that don't have a dyaddic valence
 nodyads =: ;:'[: ~. {: }: L.'
 
+NB. y is an AR.  Result is string form.  But if the result is more than 50 chars, we
+NB. return empty; if more than 20 chars, we return the first 20
+ARtostring =: 3 : 0"0
+y =. y 5!:0
+y =. 5!:5 <'y'
+if. 50 < #y do.
+  ' ... '
+elseif. 20 < #y do.
+  enparen (20{.y),'...'
+elseif. do.
+  enparen y
+end.
+)
 
 NB. called after error. y is the ARs of the operands that were executed
 NB. x is 1 (default 1) to include J error info - use only if there has been an error
@@ -1076,7 +1122,7 @@ if. x do.
   s =. LF,((<:13!:11''){::9!:8'')
 else. s =. ''
 end.
-s,LF, ; 3 : ('y =. y 5!:0';'< enparen 5!:5 <''y''')"0 y
+s,LF, ; <@ARtostring y
 )
 
 NB. Routine to parse and execute a block
@@ -1388,7 +1434,7 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
                 nameloc =. nameloc ,"0 1 (3 : ('y =. y 5!:0';''' ;~ sideeff + (noun,adv,conj,verb) {~ 4!:0 <''y''')"0) rhs
               else.
                 NB. Not AR assignment, just use values.  RHS must be a noun
-                nameloc =. nameloc ,. noun ;"0 (3 : '5!:1 <''y'''&.>) rhs
+                nameloc =. nameloc ,"0 1 noun ;"0 (3 : '5!:1 <''y'''@>) rhs
               end.
             catch.
               errors =. errors , (s_index { inplinenos) ; ('Execution error after: ' , > {:!.(<'start of line') }.queue),LF,('error in multiple assignment'),LF,((<:13!:11''){::9!:8'')
@@ -1711,7 +1757,7 @@ elseif. do.
   flags typeval <'r'
 end.
 )
-lintconjcut =: (<,';.') lintclass5 (noun,verb,0)
+lintconjcut =: (<,';.') lintclass5 (0,verb,0)
 lintconjderiv =: (<,'d.') lintclass5 (0,verb,invdyad)
 lintconjDeriv =: (<,'D.') lintclass5 (0,verb,0)
 lintconjtaylor =: (<,'T.') lintclass5 (noun,verb,invdyad)
