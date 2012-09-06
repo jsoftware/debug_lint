@@ -90,10 +90,13 @@ fls=. getscripts_j_ y
 NB. Read in the script, cut to lines with LF removed
 lines =. <;._2 CR -.~ LF ,~^:(~: {:) 1!:1 sourcefn =. {. fls
 
-NB. Find the starts of explicit definitions: define (not assignment)  or : 0
-NB. Discard comment if any, convert TAB to spaces
-NB. Change this to accommodate other patterns
-estartx =. I. _1 ~: (<0 0)&{::@(exppatt&rxmatch)@> }:^:('NB.' -: 3 {. >@{:)&.;: :: (''"_)&.> lines
+NB. Find the starts of explicit definitions, using exppatt.
+NB. Discard comment if any, and throw out quoted strings (because the assignment of Note contains quoted 0 : 0)
+NB. Change exppatt to accommodate other patterns
+NB. First find start of nouns
+nstartx =. I. _1 ~: (<0 0)&{::@(exppattn&rxmatch)@> explines =. (#~   '''' ~: {.@>)@:(}:^:('NB.' -: 3 {. >@{:))&.;: :: (''"_)&.> lines
+NB. Then everything else, and make sure nouns are included
+estartx =. ~. /:~ nstartx , I. _1 ~: (<0 0)&{::@(exppatt&rxmatch)@> explines
 
 NB. Find the ends of explicit definitions: ')' by itself
 eendx =. I. ((,')') -: -.&' ')@> lines
@@ -101,10 +104,17 @@ eendx =. I. ((,')') -: -.&' ')@> lines
 NB. clear accumulating list of messages
 emsgs =. 0 2$a:
 
-NB. Find starts that share an end, or have no end.  These are fatal.
-if.  #missend =. I. eendx (I. (= +. -.@:~:@[) #@[) estartx do.
-  emsgs =. emsgs , (missend{estartx) ;"0 <'definition is missing trailing )'
+NB. Find starts that share an end, or have no end.  If the first of a shared group of starts is a noun,
+NB. we'll ignore it; otherwise flag all but the last as errors.  Install a bogus high start value to guarantee
+NB. that the last box of results has the trailing unended.
+sharedstarts =. (</.~   eendx&I.) estartx,_
+if.  #missend =. ; ((#~  nstartx -.@:e.~ {.@>)@}: , {:) }:&.> sharedstarts do.
+  emsgs =. emsgs , missend ;"0 <'definition is missing trailing )'
 end.
+NB. Remove all but the first start sharing an end from the list of starts.  This prevents us from going into
+NB. a noun and putting in our collector there, where it will just become part of the noun
+estartx =. estartx -. ; }.&.> sharedstarts
+
 NB. Find ends that share a start or have no start.  Type the previous start.  You could make a case for
 NB. not detecting these until after there has been an error on load, because
 NB. sometimes a user will start two explicits on the same line, and we don't want to complain until there is trouble; but
@@ -116,9 +126,10 @@ if.  #missstart =. I. estartx (I.  (= +. -.@:~:@[) 0:) eendx do.
 end.
 if. 0 = #emsgs do.  NB. If no errors, continue checking
   NB. Replace each explicit-defining line with our name-collector, and load the lines
+  NB. In our collector, we have to check the name for validity right away, because the same name may be
+  NB. reloaded later.  That makes this a rather long line
   expnames =: 0 2$a:
-  nlines =. estartx ('4!:5 (1)' , LF , ] , LF , 'expnames_lint_ =: expnames_lint_ , (4!:5 (0)) ] (4!:5 (1)) ,. <' , ":@[)&.> estartx { lines
-  nlines =. estartx ('expnames_lint_ =: expnames_lint_ , (<',(":@[),') ,.~ (4!:5@0: ] 1: 4!:5@[ (".@[ 4!:5@1:))' , '''' ([,[,~ ] #!.''''~ 1 j. =) ])&.> estartx { lines
+  nlines =. estartx ('expnames_lint_ =: expnames_lint_ , (<',(":@[),') ,.~ (#~   (1 2 3 e.~ 4!:0) *. ('' : '' +./@:E. 5!:5)"0) (4!:5@0: ] 1: 4!:5@[ (".@[ 4!:5@1:))' , '''' ([,[,~ ] #!.''''~ 1 j. =) ])&.> estartx { lines
 
   try.
     cocurrent 'base'   NB. In case no locale given, load into base
@@ -152,8 +163,8 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
     NB. Discard any nouns, and then discard anything that doesn't have ' : ' in the first line of its definition.
     NB. Then discard duplicates.  This should be enough of a name to identify the explicit definition, and we will
     NB. use it to establish the locale of the definition
-    expnames =: (#~    1 2 3 e.~ 4!:0@:({."1)) expnames  NB. keep adv conj verb
-    expnames =: (#~    (' : ' +./@:E. 5!:5)@{."1) expnames  NB. keep explicit defn
+NB. obsolete     expnames =: (#~    1 2 3 e.~ 4!:0@:({."1)) expnames  NB. keep adv conj verb
+NB. obsolete     expnames =: (#~    (' : ' +./@:E. 5!:5)@{."1) expnames  NB. keep explicit defn
     expnames =: (#~    ~:@:>@:({:"1)) expnames   NB. discard duplicates
 
     NB. If no externals, quit... but it's suspicious
@@ -184,7 +195,7 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
 
     NB. check each explicit name, creating list of errors
     emsgs =. emsgs , ; <@checkexplicitdefs expdefs
-EM   =: emsgs
+
     NB. Remove any error messages that were disabled by directive
     emsgs =. emsgs #~ 0 <: ((/: |) messageenable) (<:@(I.~ |)~ { [) >: > 0 {"1 emsgs
 
@@ -195,12 +206,13 @@ end.
 NB. We have the list of errors
 NB. display them in a grid, along with the source lines
 if. #emsgs do.
+  NB. Sort emsgs on fraction, so the grouped messages come out in the right order
+  NB. Collect multiple errors per line into one big emsg, with LF in between
+  NB. Put messages for all parts of the same line into the line, by removing fractional part of line
+  emsgs =. (<.&.>@{."1 (~.@[ ,. <@}:@;@:(,&LF&.>)/.) 1&{"1) /:~ emsgs
   NB. Display grid only if it is supported, i. e. GTK (J7) or JIDE (J6)
   if. IFJ6 do. IFGTK =. -. IFCONSOLE end.
   if. IFGTK do.
-    NB. Collect multiple errors per line into one big emsg, with LF in between
-    NB. Put messages for all parts of the same line into the line, by removing fractional part of line
-    emsgs =. (<.&.>@{."1 (~.@[ ,. <@}:@;@:(,&LF&.>)/.) 1&{"1) emsgs
     gridopts =. ,: 'CELLCOLORS';0 0 0 240 240 240 ,: 255 0 0 240 240 240
     gridopts =. gridopts , 'CELLCOLOR';1 0
     gridopts =. gridopts , 'CELLFONTS';< '"Courier New" 10';'"Arial" 10'
@@ -213,12 +225,13 @@ if. #emsgs do.
 else.
   smoutput 'No errors found'
 end.
-/:~ emsgs
+emsgs
 )
 NB.*exppatt n pattern to match the start of an explicit definition
 NB.-descrip: regex pattern to detect start-of-explicit-definition
 NB.-note: modify if you have novel ways of starting an explicit definition
-exppatt =: rxcomp '(?: define(?: |$)| : *0|(^|[^a-zA-Z])Note[ ''])'
+exppattn =: rxcomp '(?:^\s*|[^a-zA-Z0-9_])(?:(?:0|noun)\s+define(?:\s|$)|(?:noun|0)\s+:\s*0|Note(?![a-zA-Z0-9_])\s*(?!\s)(?!=[:.]))'
+exppatt =: rxcomp '(?:^\s*|[^a-zA-Z0-9_])(?:0|1|2|3|4|13|noun|verb|adverb|conjunction|monad|dyad)\s+(?:define(?:\s|$)|:\s*0)'
 
 NB. nilad.  return list of all names globally defined anywhere
 listglobalnames =: 3 : 0
@@ -933,7 +946,7 @@ NB. for verb/adverb/conj, create linear form; if multiple lines, it's unsafe (ex
       NB. Find the occurrences of : 0 in the first line
       loc0 =. >: I. 2 (;:':0')&-:\ bl
       NB. Remove empty lines; classify each line as : ) neither
-      lc =. (,.':)')&(]@i.);._2 (#~   -.@(*. _1&|.)@(LF&=)) R   =: LF ,~ LF takeafter l  NB. ]@i. J602 bug
+      lc =. (,.':)')&(]@i.);._2 (#~   -.@(*. _1&|.)@(LF&=)) LF ,~ LF takeafter l  NB. ]@i. J602 bug
       NB. Now, looking at the sections ending in 1=), there is a monad (1) if the first line is not 0=:,
       NB. and a dyad (2) if any line other than the last is 0=:.  Calculate that.
       valences =. (((0 ~: {.) + 2 * 0 e. }:);._2~ (1&=)) lc
@@ -1033,7 +1046,7 @@ end.
 
 NB. add name;type;value to list, and coalesce duplicates.  If new name multiply defined, keep the last
 NB. x is list, y is new table or list
-addnames   =: 4 : 0
+4 : 0  NB. debug version
 l =. x (#~ ~:@:({."1))@|.@, y
 if. 0 e. 1 2 4 8 e.~ 3!:0&> 1 {"1 l do.
 qprintf 'x y '
