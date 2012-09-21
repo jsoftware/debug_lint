@@ -790,11 +790,8 @@ b1ivars;b1bvars;b1rvars;<emsgs
 )
 
 NB. break, continue, return, throw
-NB. We intersect the current inline vbls as break variables.  The next thing should be
-NB. a end-of-block indicator; if not, we give an error message and keep the inline variables
-NB. as is.  But if we are at end-of-block, we can clear the inline variables to indicate that there is no
-NB. inline path through this block.  This is safe because it is known that the control statement is going to
-NB. intersect this block's return with something else
+NB. We intersect the current inline vbls as break variables, and clear the inline variables
+NB. which will cause a message for dead code.
 NB. throw doesn't even have a return value.  We just clear the inline vbls
 NB. We use the x parameter to indicate which secondary status should be updated (1 for break/continue, 2 for return)
 cparse_control_bcr =: 4 : 0
