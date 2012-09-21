@@ -195,7 +195,6 @@ NB. obsolete     expnames =: (#~    (' : ' +./@:E. 5!:5)@{."1) expnames  NB. kee
 
     NB. check each explicit name, creating list of errors
     emsgs =. emsgs , ; <@checkexplicitdefs expdefs
-
     NB. Remove any error messages that were disabled by directive
     emsgs =. emsgs #~ 0 <: ((/: |) messageenable) (<:@(I.~ |)~ { [) >: > 0 {"1 emsgs
 
@@ -430,17 +429,31 @@ NB. variables which appear in both lists appear in the result.  If the
 NB. type differs, we OR the types together, which will let it parse either way.
 NB. We will give a message during parsing.
 NB. if the value differs, it is set to unknown ('')
+NB. There are 3 special values, $LOC, $NNU, and $LBA.  $LOC is manadatory, giving the locale.  If
+NB. it is omitted, it means that the path has no inline validity, i. e. it is dead code.  In this
+NB. case, $LBA will still be defined.
 NB. The special value $NNU is different - it contains potential errors, and it is
 NB. unioned rather than intersected.
-NB. If either table is empty, that just means it hasn't been created, and the other table
+NB. $LBA is used as a poor-man's-stack for loops, and will always be the same in all branches
+NB. in which it is combined.
+NB. $NNU is always unioned between the two operands.  If $LOC is omitted in one path, all the
+NB. other variables (except $NNU) are taken from the other path
+NB. On top of that, there is one other possibility for coding ease: a list can be
+NB. entirely empty, which just means that it wasn't created.  In that case, the other table
 NB. is used
 namesintersect =: namesintersectu&.>
 namesintersectu =: 4 : 0
-NB. if either list empty, use the other
+NB. If either list empty, use the other
 if. 0 e. x ,&# y do. x,y return. end.
-NB. get names in common
-comnames =. (x (e. # [)&:(0&{"1) y) -. <'$NNU'
-newrcds =. x (comnames ,. 23 b.&.>&:(1&{"1) ,. (<'')"_^:~:"0&:(2&{"1))&({~   comnames i.~ 0&{"1) y
+NB. If $LOC omitted in either list, take everything but $NNU from the other list.
+NB. $LBA should still be defined and identical between the lists, so we delete duplicates
+if. x +.&((<'$LOC')&(-.@e.))&:({."1) y do.
+  newrcds =. (#~ (<'$NNU') ~: {."1) ~. x,y
+else.
+  NB. get names in common
+  comnames =. (x (e. # [)&:(0&{"1) y) -. <'$NNU'
+  newrcds =. x (comnames ,. 23 b.&.>&:(1&{"1) ,. (<'')"_^:~:"0&:(2&{"1))&({~   comnames i.~ 0&{"1) y
+end.
 NB. Get the value for $NNU, which is known to be defined always
 newrcds , x (2&{.@[ , ~.@,L:0&(2&{))&({~   (<'$NNU') i.~ 0&{"1) y
 )
@@ -449,8 +462,16 @@ NB. Handle a block of J statements
 NB. If the last sentence of the block had no side-effect, add it to the list of possibles
 cparse_control_block =: 3 : 0
 'ivars bvars rvars' =. y
-'ivars emsgs' =. ivars parseblock readblock''
-nugatories =: nugatories , (1;1) {:: ('';<ivars) lookupname <'$NNU'
+NB. If $LOC is not defined, it means that the current block cannot be reached.  In that case,
+NB. give an error message for the block, and don't try to parse anything
+if. ivars isnamedefined '$LOC' do.
+  'ivars emsgs' =. ivars parseblock readblock''
+  nugatories =: nugatories , (1;1) {:: ('';<ivars) lookupname <'$NNU'
+else.
+  NB. If there are no inline variables, it means that the current block cannot be reached.  In that case,
+  NB. give an error message for the block, and don't try to parse anything
+  emsgs =. ,: ((<0 0) {:: y =. readblock'') ; 'Sentence cannot be reached'
+end.
 ivars;bvars;rvars;<emsgs
 )
 
@@ -783,13 +804,8 @@ NB. read the control word
 emsgs =. 0 2$a:
 NB. take the new checkpoint of variables, and apply that to the indicated status
 ibr =. (x namesintersect&({&ibr) 0) x} ibr
-NB. If the next word is end-of-block, clear the inline history to indicate that there is no inline
-if. controlwordsend e.~ peekblock'' do.
-  ibr =. (<0 3$a:) 0} ibr
-else.
-NB. If the next word is not an end-of-block, give an error
-  emsgs =. emsgs , lineno ; 'statements following ' , cw , ' will not be reached'
-end.
+NB. clear the inline history, escept for $LBA and $NNU, to indicate that there is no inline
+ibr =. (keepnames&('$NNU';'$LBA')&.> 0 { ibr) 0} ibr
 ibr , <emsgs
 )
 cparse_control_break =: 1&cparse_control_bcr
@@ -1057,7 +1073,10 @@ l
 addnames =: (#~ ~:@:({."1))@|.@,
 NB. delete name from list.  x is name table, y is list of names
 delnames =: [ #~ {."1@[ -.@:e. ]
-
+NB. delete all names in x that DO NOT appear in y
+keepnames =: [ #~ {."1@[ e. ]
+NB. return 1 if name y is in the namelist x
+isnamedefined =: (e. {."1)~"2 _   boxopen
 
 x =. ,:  'conew';verb;<(<,'@'),<;:'<]'  NB. conew  return class name
 x =. x , 'cocurrent';(verb+setlocale);'>'  NB. cocurrent  set locale name
