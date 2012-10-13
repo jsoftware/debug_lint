@@ -26,6 +26,10 @@ end.
 ''
 )
 
+NB. Maximum line length that we will try to display in a grid cell
+
+MAXLINELEN =: 300
+
 NB.*lint v check syntax of a script and load it
 NB.-descrip: Load a J script and perform static analysis
 NB.-
@@ -217,9 +221,20 @@ if. #emsgs do.
     gridopts =. gridopts , 'CELLFONTS';< '"Courier New" 10';'"Arial" 10'
     gridopts =. gridopts , 'CELLFONT';1 0
     gridopts =. gridopts , 'HDRROW';< ' ' ; <@":"0 i. # lines
-    gridopts grid (((":#emsgs),' errors found in');sourcefn) , ((1&{"1 emsgs) (0&{::"1 emsgs)} (#lines) # <'') ,. lines
-    NB. If messages have gone to grid, don't return them, unless asked for
-    if. msglevel = 0 do. emsgs =. 0 2$a: end.
+    NB. If there is a long line, truncate it and make a note in the error messages
+    ecount =. (":#emsgs),' errors found in'
+    esfn =. >sourcefn
+    if. MAXLINELEN < >./ #@> lines do.
+      esfn =. esfn , LF , 'Lines displayed here are truncated to ' , (":MAXLINELEN) , ' characters'
+      lines =. ({.~   MAXLINELEN <. #)&.> lines
+    end.
+    try.
+      gridopts grid (ecount;esfn) , ((1&{"1 emsgs) (0&{::"1 emsgs)} (#lines) # <'') ,. lines
+      NB. If messages have gone to grid, don't return them, unless asked for
+      if. msglevel = 0 do. emsgs =. 0 2$a: end.
+    catch.
+      smoutput 'Error displaying grid'
+    end.
   end.
 else.
   smoutput 'No errors found'
@@ -652,15 +667,20 @@ NB. like while, except that in the for_x form we define local x and x_index as n
 NB. after the end statement
 cparse_control_for =: 3 : 0
 'ivars bvars rvars' =. y
+emsgs =. 0 2 $ a:
 NB. Save the name if any
-vname =. '_' takeafter 1 {:: readblock''
+'lineno vname' =. readblock''
+vname =. '_' takeafter vname
 startnnu =. 1 {:: ('';<ivars) lookupname <'$NNU'
-emptytblock =. (<'do') -: peekblock''
+if. (<'do') -: peekblock'' do.
+  emsgs =. emsgs , lineno ; 'for. must not have an empty selector'
+end.
 tivars =. ivars addnames '$NNU' ; ($0) ;< 2#<$0
 NB. Now we are in recursion on the break vars.  The old ones in bvars will be restored when we finish
 NB. this control structure.  We are uncertain about how to handle break in a T block.  Start this structure
 NB. with a fresh set of break vars
-if. 1 >: #'tivars tbvars trvars emsgs' =. cparse_statement tivars;(0 3$a:);<rvars do. a: return. end.
+if. 1 >: #'tivars tbvars trvars nemsgs' =. cparse_statement tivars;(0 3$a:);<rvars do. a: return. end.
+emsgs =. emsgs , nemsgs
 if. 'do' -.@-: 1 {:: r =. readblock'' do. a: return. end.
 if. 0 ~: # 0 {:: r =. 1{:: ('';<tivars) lookupname <'$NNU' do.
   emsgs =. emsgs , (0{::r) ;"0 < 'the test block must produce a noun value'
@@ -676,8 +696,8 @@ if. 'end' -.@-: 1 {:: readblock'' do. a: return. end.  NB. consume the block-end
 NB. Now that we are exiting the block, we need to combine the break and fallthrough paths.  We do this first,
 NB. because if the loop ends with break, we will have cleared the fallthrough variables in expectation of their being intersected.  so do it.
 b1ivars =. b1ivars namesintersectu b1bvars
-NB. If empty T block, we don't need to worry about that path through.  Treat loopbodyalways like empty T-block
-if. -. emptytblock +. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do.
+NB. If we're not sure that we execute the loop body, another path is through the inital tblock and then bypassing the loop
+if. -. {: 1 {:: ('';<b1ivars) lookupname <'$LBA' do.
   tivars =. tivars namesintersectu tbvars
   'b1ivars b1rvars' =. (tivars;<trvars) namesintersect (b1ivars;<b1rvars)
 end.
