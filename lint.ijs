@@ -6,6 +6,7 @@ NB.  lint    check a file
 NB.  exppatt regex pattern for finding explicit definitions
 
 NB. TODO:
+NB. bug: a__b__c will find local b, but only b in c should be found
 NB. translate internal names back into primitives for postmortem
 NB. check for side effect of inverse
 NB. Label grid window in case multiple scripts
@@ -137,7 +138,7 @@ if. 0 = #emsgs do.  NB. If no errors, continue checking
 
   try.
     cocurrent 'base'   NB. In case no locale given, load into base
-    0!:100 ; ,&LF&.> nlines estartx} lines
+    3 : '0!:100 y' ; ,&LF&.> nlines estartx} lines  NB. Make an explicit verb to avoid corruption of locals here
     cocurrent 'lint'
   catch.
     cocurrent 'lint'
@@ -1019,12 +1020,14 @@ NB. process the names starting from the end.  Each name except the last must res
 NB. start off by using the current locale as if it had come from a typeval
 'loc defnames' =. x
 for_l. |. }. qname do.
+assert. 0 = L. loc [ 'analyzename'
   if. 1 = #'type loc' =. (loc;<defnames) lookupname l do.  <'' return. end.
   NB. verify the new locale is a single non-empty boxed string with rank <: 1
   if. noun ~: type do. <'' return. end.   NB. If not a noun, that's alocale error
   if. loc -: '' do. <'' return. end.   NB. if undefined, that's a locale error too
   loc =. (<loc) 5!:0   NB.?lintonly loc =. 0 NB. Convert string form of value to real form
-  if. 1 ~: */ $ loc do.  <'' return. end.  
+  if. 1 ~: */ $ loc do.  <'' return. end.
+  loc =. >loc   NB. our form is unboxed
   if. 2 ~: 3!:0 > loc do.  <'' return. end.
   if. 1 < $ $ > loc do.  <'' return. end.
   NB. If the locale is numbered, don't use it, since it should have been handled by conew - we must be
@@ -1033,7 +1036,7 @@ for_l. |. }. qname do.
   NB. The new loc is legit.  Proceed, starting in it
 end.
 NB. Return the locale we resolved to
-< (> {. qname) , '_' , (>loc) , '_'
+< (> {. qname) , '_' , (loc) , '_'
 )
 
 NB. x is current locale;table of defined names;type;value
@@ -1043,6 +1046,7 @@ NB. If the name has no locale, we look for it in the defined-names table; if not
 NB. Then we go through the path for the locale of the name: until found, we look first in the table, then in the system
 lookupname =: 4 : 0"1 0
 'loc defnames' =. x
+assert. 0 = L. loc
 nmx =. ({."1 defnames)&i.
 NB. If the name is in the defined list, it's easy
 if. (#defnames) > i =. nmx y do.
@@ -1063,6 +1067,9 @@ NB. now nm and loc are strings
 NB. Get the search path for this locale, including the locale itself
 NB. Create all the names for the path, and look up each one in each name table.  Pick the first one found.
 NB. Give the name table priority over defined names
+LOC__   =: loc
+X__   =: x
+Y__   =: y
 allnames =. (nm , '_' , ,&'_')&.> loc ; 18!:2 <loc
 dictp =. 1 i.~ (#defnames) > dictx =. nmx allnames
 globp =. 1 i.~ findglobalname allnames
@@ -1095,9 +1102,10 @@ keepnames =: [ #~ {."1@[ e. ]
 NB. return 1 if name y is in the namelist x
 isnamedefined =: (e. {."1)~"2 _   boxopen
 
-x =. ,:  'conew';verb;<(<,'@'),<;:'<]'  NB. conew  return class name
+x =. ,:  'conew';verb;    <(<,'@'),<;:'<]'  NB. conew  return class name
 x =. x , 'cocurrent';(verb+setlocale);'>'  NB. cocurrent  set locale name
 x =. x , 'coclass';(verb+setlocale);'> '  NB. cocurrent  set locale name
+x =. x , 'coname';(verb);   <(<'@:'),<(<(<,'@'),<;:'<".'),<(<,'"'),<(<<;._1 ' 0 loc'),<(,'0');_  NB. coname get current name (in loc)  AR of  <@".@:('loc'"_)
 x =. x , '".';(verb+sideeffm);'".'  NB. execute has side-effects
 x =. x , '$:';(verb+sideeff);''  NB. recursion may change valence, so can't risk it
 x =. x , '@';conj;'lintconjatop'
@@ -1268,6 +1276,7 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
           nugatory =. 0
           if. *#res do.
             loc =. res 5!:0  NB.?lintonly loc =. (0;1) {:: , res
+            assert. 0 = L. loc
           else.
             errors =. errors , (s_index { inplinenos) ; 'Locale set to unknown value, ignored'
           end.
@@ -1301,6 +1310,7 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
         if. (1 { exetypes) bwand setlocale do.
           if. *#res do.
             loc =. res 5!:0    NB.?lintonly loc =. (0;1) {:: , res
+            assert 0 = L. loc
           else.
             errors =. errors , (s_index { inplinenos) ; 'Locale set to unknown value, ignored'
           end.
@@ -1524,7 +1534,7 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
         elseif. qendb e. ;:'()=.=:' do.
           stack =. (qend ;~ (lpar,rpar,2#asgn) {~  (;:'()=.=:') i. qendb) , stack
         NB. If self-defining term, keep it as a noun
-        elseif. (-. '.:' e.~ {: qend) *. ({. qend) e. '''0123456789' do.
+        elseif. (-. '.:' e.~ {: qend) *. ({. qend) e. '''_0123456789' do.
           stack =. (noun ; < (,'0') ; ". qend) , stack
         elseif. do.
           NB. There is either a primitive or a name.  See if it's one we have hardwired, and if so, use the hardwired
