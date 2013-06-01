@@ -1,11 +1,11 @@
 NB. manifest for lint
 CAPTION=: 'Load a script and check its syntax'
-VERSION=: '1.10.1'
+VERSION=: '1.10.2'
 PLATFORMS=: ''
 FILES=: 0 : 0
 lint.ijs
 )
-RELEASE=: 'j602 j701'
+RELEASE=: 'j602 j701 j801'
 DEPENDS=: 0 : 0
 )
 DESCRIPTION=: 0 : 0
