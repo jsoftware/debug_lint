@@ -20,10 +20,13 @@ cocurrent 'lint'
 require 'regex'
 require 'strings'
 3 : 0 ''
-if. IFJ6 do. IFGUI =. -. IFCONSOLE
-else. IFGUI=. IFQT +. IFGTK end.
+if. IFQT do. IFGUI =: 1
+else.
+  if. IFJ6 do. IFGUI =: -. IFCONSOLE
+  else. IFGUI=: IFGTK end.
+end.
 if. IFGUI do.
-require 'grid'
+  require 'grid'
 end.
 ''
 )
@@ -216,8 +219,6 @@ if. #emsgs do.
   NB. Put messages for all parts of the same line into the line, by removing fractional part of line
   emsgs =. (<.&.>@{."1 (~.@[ ,. <@}:@;@:(,&LF&.>)/.) 1&{"1) /:~ emsgs
   NB. Display grid only if it is supported, i. e. GTK (J7) or JIDE (J6)
-  if. IFJ6 do. IFGUI =. -. IFCONSOLE
-  else. IFGUI=. IFQT +. IFGTK end.
   if. IFGUI do.
     gridopts =. ,: 'CELLCOLORS';0 0 0 240 240 240 ,: 255 0 0 240 240 240
     gridopts =. gridopts , 'CELLCOLOR';1 0
