@@ -1,6 +1,6 @@
 NB. general/misc/lint
 NB. check syntax of a script and load it
-NB. version: 1.0.0
+NB. version: 1.12.1
 NB. main functions:
 NB.  lint    check a file
 NB.  exppatt regex pattern for finding explicit definitions
