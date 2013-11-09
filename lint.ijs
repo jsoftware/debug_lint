@@ -1162,14 +1162,17 @@ nodyads =: ;:'[: ~. {: }: L.'
 NB. y is an AR.  Result is string form.  But if the result is more than 50 chars, we
 NB. return empty; if more than 20 chars, we return the first 20
 ARtostring =: 3 : 0"0
-y =. y 5!:0
-y =. 5!:5 <'y'
-if. 50 < #y do.
-  ' ... '
-elseif. 20 < #y do.
-  enparen (20{.y),'...'
-elseif. do.
-  enparen y
+if. y = <'' do. ''
+else.
+  y =. y 5!:0
+  y =. 5!:5 <'y'
+  if. 50 < #y do.
+    ' ... '
+  elseif. 20 < #y do.
+    enparen (20{.y),'...'
+  elseif. do.
+    enparen y
+  end.
 end.
 )
 
@@ -1182,6 +1185,7 @@ if. x do.
   s =. LF,((<:13!:11''){::9!:8'')
 else. s =. ''
 end.
+qprintf'y '
 s,LF, ; <@ARtostring y
 )
 
@@ -1324,7 +1328,7 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
       case. 3 do.  NB. adverb execution
         NB. If the modifier is unknown, make the result an unknown unsafe verb, nonnugatory
         NB. Any disallowed valences flagged in the modifier are really to be associated with this derived verb
-        if. (<'') e. exeblock do.
+        if. (<'') = 1 { exeblock do.
           res =. (verb+sideeff+invvalences bwand 1 { exetypes);''
           nugatory =. 0
         NB. Execute our verb that emulates the modifier.  This will return a type;value.  No primitive modifier
@@ -1348,7 +1352,7 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
       case. 4 do.  NB. conjunction execution
         NB. If the modifier is unknown, make the result an unknown unsafe verb, nonnugatory
         NB. Any disallowed valences flagged in the modifier are really to be associated with this derived verb
-        if. (<'') e. exeblock do.
+        if. (<'') = 1 { exeblock do.
           res =. (verb+sideeff+invvalences bwand 1 { exetypes);''
           nugatory =. 0
         NB. Execute our verb that emulates the modifier.  This will return a type;value.  No primitive modifier
@@ -1691,8 +1695,12 @@ NB. m&v or u&n.  Create the flags for the result
 NB.  setlocale, parseerror from either
 NB.  sideeffm = sideeffd if sideeffd u in either
   flags =. (bwor   _1 bwlsl sideeffvd&bwand) sideeffvderrloc bwand typeu bwor typev
-  r =. ((<0 1) { y) 5!:0 (u 5!:0) (((<1 1) { y) 5!:0)
-  flags typeval <'r'
+  if. (<'') e. 1 {"1 y do.
+    (flags+verb);''
+  else.
+    r =. ((<0 1) { y) 5!:0 (u 5!:0) (((<1 1) { y) 5!:0)
+    flags typeval <'r'
+  end.
 end.
 )
 lintconjbond =: (<,'&') lintclass1
@@ -1949,6 +1957,7 @@ NB. Otherwise, see if it creates an adverb
 elseif. do.
   m =. ((<0 1) { y) 5!:0
   n =. ((<1 1) { y) 5!:0
+  NB.?lintonly 'm n' =. 0
   NB. If it's a harmless combination, allow it as a verb
   if. (mn =. m,n) e. okforeignverbs do.
     r =. m!:n
