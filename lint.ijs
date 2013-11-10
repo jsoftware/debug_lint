@@ -1,6 +1,6 @@
 NB. general/misc/lint
 NB. check syntax of a script and load it
-NB. version: 1.12.1
+NB. version: 1.12.2
 NB. main functions:
 NB.  lint    check a file
 NB.  exppatt regex pattern for finding explicit definitions
@@ -1185,7 +1185,6 @@ if. x do.
   s =. LF,((<:13!:11''){::9!:8'')
 else. s =. ''
 end.
-qprintf'y '
 s,LF, ; <@ARtostring y
 )
 
