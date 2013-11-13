@@ -82,6 +82,8 @@ NB.-  known to be executed before others, and creates globals that the later ver
 NB.-  in concert with NB.lintonly to solve other problems of initialization.  Note that the definitions are the
 NB.-  ones in effect when the directive is scanned.
 NB.- NB.?lintloopbodyalways  in the B block of for. or while., indicates that the loop body is always executed
+NB.- NB.?lintformnames formname   the formname must be a form; all cc lines in the form create a variable of the controlname
+NB.-  (and name_select for selection controls)
 NB.-usage: [msglevel] lint filenames...
 NB.-y: The names of the scripts to be checked.  For the nonce, only one script will be checked
 NB.-result: Table of (line number);(error message) for each error.  If there is no error, a
@@ -266,7 +268,7 @@ NB. Check an explicit definition.  Split it into monadic and dyadic parts, if an
 NB. and check each valence with the appropriate initial defined names
 NB. y is name;starting line;lines of entity
 NB. Result is table of (line number);error message
-NB. Side effect: defined globals are saved for use in later verbs if this verb is flagged with ?lint saveglobals
+NB. Side effect: defined globals are saved for use in later verbs if this verb is flagged with ?lintsaveglobals
 checkexplicitdefs =: 3 : 0"1 2 1
 'name lineno lines' =. y
 NB. Figure out what kind of explicit definition we are dealing with
@@ -871,6 +873,31 @@ case. 'NB.?lintloopbodyalways' do.
   ivars =. 0 {:: ibr
   ivars =. ivars addnames '$LBA' ; ($0) ;< 1 (_1)} 1 {:: ('';<ivars) lookupname <'$LBA'
   ibr =. (<ivars) 0} ibr
+case. 'NB.?lintformnames' do.
+  NB. the operand of the directive is the name of a form.  Extract the name and look it up
+  formname =. ' ' -.~ ' ' takeafter cw
+  if. 1 = #formvalue =. ((loc =. 1 { ('';{.ibr) lookupname <'$LOC'),{.ibr) lookupname <formname do.
+    emsgs =. emsgs , lineno ; 'Form name is undefined'
+  elseif. noun ~: 0 {:: formvalue do.
+    emsgs =. emsgs , lineno ; 'Form is not a noun'
+  elseif. do.
+    formvalue =. (1 { formvalue) 5!:0
+    NB. Extract the child controls and their type.  This is rough and ready.
+    NB. cut to words
+    formlines =. (3 {. ;: :: (a:"_));._1 ';' , CRLF -.~ formvalue
+    NB. keep only 'cc' lines
+    formlines =. (#~ (<'cc') = {."1) formlines
+    NB. keep only the controls that define variables
+    varctls =. ;: 'checkbox combobox combodrop combolist edit editm listbox radiobutton scrollbar scrollbarv richedit richeditm spin spinv tab trackbar trackbarv'
+    formlines =. (#~ varctls e.~ 2&{"1) formlines
+    NB. for the variables that create a _select name, create that name
+    selectctls =.  ;: 'combobox combodrop combolist edit editm listbox richedit richeditm'
+    formlines =. (,   [: ,&'_select'&.> (#~ selectctls e.~ 2&{"1)) formlines
+    NB. Now item 1 of each row has the names to be defined.  Give them a value of an empty string in the selected locale, and define the names
+    formval =. ''
+    formvars =. (('_' ([,],[)&.> loc) ,~&.> 1 {"1 formlines) ,"0 1 (0) typeval <'formval'
+    ibr =. (<(0 {:: ibr) addnames formvars) 0} ibr
+  end.
 case. do.
   emsgs =. emsgs , lineno ; 'Unrecognized lint directive'
 end.
@@ -1070,9 +1097,6 @@ NB. now nm and loc are strings
 NB. Get the search path for this locale, including the locale itself
 NB. Create all the names for the path, and look up each one in each name table.  Pick the first one found.
 NB. Give the name table priority over defined names
-LOC__   =: loc
-X__   =: x
-Y__   =: y
 allnames =. (nm , '_' , ,&'_')&.> loc ; 18!:2 <loc
 dictp =. 1 i.~ (#defnames) > dictx =. nmx allnames
 globp =. 1 i.~ findglobalname allnames
@@ -1496,17 +1520,17 @@ while. s_index < #inplines do.   NB. for_s. fails under J6.02; break problem
               if. arassign do.
                NB. AR assignment - calculate linear value for each AR, and the part of speech
                 NB. We have to set all the ARs to 'unknown sideeff' of the appropriate type
-                nameloc =. nameloc ,"0 1 (3 : ('y =. y 5!:0';''' ;~ sideeff + (noun,adv,conj,verb) {~ 4!:0 <''y''')"0) rhs
+                nameloc =. nameloc ,"0 1 (3 : ('y =. y 5!:0';''''' ;~ (noun,sideeff + adv,conj,verb) {~ 4!:0 <''y''')"0) rhs
               else.
                 NB. Not AR assignment, just use values.  RHS must be a noun
                 nameloc =. nameloc ,"0 1 noun ;"0 (3 : '5!:1 <''y'''@>) rhs
               end.
             catch.
               errors =. errors , (s_index { inplinenos) ; ('Execution error after: ' , > {:!.(<'start of line') }.queue),LF,('error in multiple assignment'),LF,((<:13!:11''){::9!:8'')
-              nameloc =. nameloc ,"0 1 (arassign { noun,verb) ; ''  NB. carry on
+              nameloc =. nameloc ,"0 1 (arassign { noun,sideeff + verb) ; ''  NB. carry on
             end.
           else. NB. value not defined
-            nameloc =. nameloc ,"0 1 (arassign { noun,verb) ; ''
+            nameloc =. nameloc ,"0 1 (arassign { noun,sideeff + verb) ; ''
           end.
         end.
 
