@@ -5,7 +5,7 @@ PLATFORMS=: ''
 FILES=: 0 : 0
 lint.ijs
 )
-RELEASE=: 'j602 j701 j801'
+RELEASE=: 'j602 j701 j801 j802'
 DEPENDS=: 0 : 0
 )
 DESCRIPTION=: 0 : 0
