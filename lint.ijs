@@ -107,7 +107,7 @@ NB. Read in the script, cut to lines with LF removed
 lines=. <;._2 CR -.~ LF ,~^:(~: {:) 1!:1 sourcefn=. {. fls
 
 NB. Find the starts of explicit definitions, using exppatt.
-NB. Discard comment if any, and throw out quoted strings (because the assignment of Note contains quoted 0 : 0)
+NB. Discard comment if any, and throw out quoted strings (because the assignment of Note contains quoted 00 : 0)
 NB. Change exppatt to accommodate other patterns
 NB. First find start of nouns
 nstartx=. I. _1 ~: (<0 0)&{::@(exppattn&rxmatch)@> explines=. (#~   '''' ~: {.@>)@:(}:^:('NB.' -: 3 {. >@{:))&.;: :: (''"_)&.> lines
@@ -252,10 +252,12 @@ NB. If messages have gone to grid, don't return them, unless asked for
       wd LINT
       textlines=. (,.~    (<'') 0} <@":"0@:i.@#) textlines
       wd 'set text shape *' , ": $ textlines
-NB.      wd 'set text data *' ,d__   =:  DEL , ; <@(,&(DEL,'0 '))@(;:^:_1)"1 dquote@":&.> textlines
       wd 'set text data *' , ; (DEL ,~ DEL , ])&.> textlines
       wd 'set text block 0 _1 1 1'
       wd 'set text color "#ffffff" "#ff0000"'
+      wd 'set text block 0 _1 0 _1'
+      wd 'set text resizecol'
+      wd 'set text resizerow'
       wd 'pshow'
       if. msglevel = 0 do. emsgs=. 0 2$a: end.
     end.
