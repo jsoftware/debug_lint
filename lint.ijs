@@ -156,19 +156,32 @@ NB. reloaded later.  That makes this a rather long line
 NB. try to analyze the error.  If we can get the line number, put the error into our format; else type and die
     syserr=. > (errnum=. <:13!:11'') { 9!:8''  NB. string form of emsg
     sysstg=. 13!:12''
-    if. errnum = 22 do.  NB. control error
+    NB.?lintonly sysstg =. 4 # LF
+    elineno =. ectllineno =. _100000
+    if. LF = {: sysstg do.
+      elineno=. _100000 ([: {. -@". , [) }. }: '\[.*?\]' rxfirst ; {: <;._1 sysstg
+      ectllineno=. _100000 ([: {. ". , [) }. }: '\[.*?\]' rxfirst 1 {:: <;._1 sysstg,LF
+    end.
+    if. (errnum = 22) *. (elineno = _100000) do.  NB. control error
       smoutput 'Control error during load.  The message was:',LF,sysstg
-      smoutput 'This means that the indicated line number of the indicated function is an invalid control.'
+      if. ectllineno ~: _100000 do.
+        smoutput 'This means that line number ' , (":ectllineno),' of the indicated function contains a mismatched control word.'
+      end.
       smoutput 'If the function is bivalent, you need to check both valences'
       emsgs return.
-    elseif.
-      lineno=. _100000
-      if. LF = {: sysstg do.
-        lineno=. _100000 ([: {. -@". , [) }. }: '\[.*?\]' rxfirst ; {: <;._1 sysstg
+    elseif. elineno ~: _100000 do.
+      estg =. syserr , ' encountered during loading the file'
+      if. errnum = 15 do.  NB. spelling error
+        if. 2 < #elines =. <;._2 sysstg , LF do.
+          if. '|' = {. caretline =. 2 {:: elines do.
+            eword =. '.' dropafter (caretline i. '^') }. 1 {:: elines
+            if. (<eword) e. ,&'.'&.> ;: 'assert break continue for goto label if do else elseif end return select case fcase throw try catch catchd catcht while whilst' do.
+              estg =. 'control word ' , eword , 'not allowed outside of a definition'
+            end.
+          end.
+        end.
       end.
-      lineno ~: _100000
-    do.
-      emsgs=. emsgs , lineno ; syserr , ' encountered during loading the file'
+      emsgs=. emsgs , elineno ; estg
     elseif. do.
       smoutput 'Unexpected error during load.  The message was:',LF,sysstg
       emsgs return.
