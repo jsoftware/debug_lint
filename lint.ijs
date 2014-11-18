@@ -36,6 +36,18 @@ pas 0 0;pcenter;
 rem form end;
 )
 
+lintwindow =: 3 : 0  NB. Run lint on current window, used in J8 function keys
+NB.?lintonly WinText_jqtide_ =. ''
+if. 'edit' -: wd 'sm get active' do.  NB. If user is in an edit window
+  if. #fd =. wd :: (''"_) 'sm get edit' do.  NB. See which file is being edited
+    fn =. (1&{"1 fd) {~ (0&{"1 fd) i. <'file'  NB. fetch filename
+    WinText_jqtide_ 1!:2 fn  NB. Flush file to disk
+    lint fn
+  end.
+end.
+i. 0 0
+)
+
 NB. Maximum line length that we will try to display in a grid cell
 
 MAXLINELEN=: 300
