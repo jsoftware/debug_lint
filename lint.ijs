@@ -41,7 +41,11 @@ NB.?lintonly WinText_jqtide_ =. ''
 if. 'edit' -: wd 'sm get active' do.  NB. If user is in an edit window
   if. #fd =. wd :: (''"_) 'sm get edit' do.  NB. See which file is being edited
     fn =. (1&{"1 fd) {~ (0&{"1 fd) i. <'file'  NB. fetch filename
-    WinText_jqtide_ 1!:2 fn  NB. Flush file to disk
+    ft =. > (1&{"1 fd) {~ (0&{"1 fd) i. <'text'  NB. fetch filedata
+    if. ft -.@-: WinText_jqtide_ do.
+      smoutput 'WinText incorrectly set!'
+    end.
+    ft 1!:2 fn  NB. Flush file to disk
     lint fn
   end.
 end.
