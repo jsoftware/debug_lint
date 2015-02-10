@@ -2066,7 +2066,7 @@ select. n
   case. 0 do.   NB. result flags of both valences come from monad u
     flags=. (typeu bwand sideeffvmerrloc) bwor +: typeu bwand sideeffvm
   case. 1 do.   NB. result flags of both valences come from corresponding flags of u
-    flags=. sideeffvmerrloc bwand typeu
+    flags=. sideeffverrloc bwand typeu
   case. do.   NB. (must be 2) result flags of both valences come from dyad u
     flags=. (typeu bwand sideeffvderrloc) (bwor _1&bwlsl) typeu bwand sideeffvd
 end.
