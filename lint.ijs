@@ -361,7 +361,14 @@ NB. result is 0 if no error, 1 if error (empty definition)
 initblockreader=: 3 : 0
 'stline lines'=. y
 NB. tokenize each line and remove comments - except for lint directives
-lines=. }:^:(1 0 -: ('NB.';'NB.?lint') ([ -: #@[ {. ])&> {:)@;:&.> lines
+try.
+  lines=. }:^:(1 0 -: ('NB.';'NB.?lint') ([ -: #@[ {. ])&> {:)@;:&.> lines
+catch.
+  elines =. ''"_@;: :: ] &.> lines
+  smoutput 'Syntax error in lintonly code:'
+  smoutput ; ,&LF&.> elines
+  1 return.
+end.
 NB. for each line, find control words; then recollect sentences between control words; then
 NB. append the line number of the line. run all the blocks together.  This deletes empty sentences, too
 NB. For multiple blocks on the same line (caused by control words), give them fractional parts to
