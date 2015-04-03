@@ -876,10 +876,9 @@ end.
 b1ivars;b1bvars;b1rvars;<emsgs
 )
 
-NB. break, continue, return, throw
+NB. break, continue, return
 NB. We intersect the current inline vbls as break variables, and clear the inline variables
 NB. which will cause a message for dead code.
-NB. throw doesn't even have a return value.  We just clear the inline vbls
 NB. We use the x parameter to indicate which secondary status should be updated (1 for break/continue, 2 for return)
 cparse_control_bcr=: 4 : 0
 ibr=. y
@@ -895,16 +894,17 @@ ibr , <emsgs
 cparse_control_break=: 1&cparse_control_bcr
 cparse_control_continue=: cparse_control_break
 cparse_control_return=: 2&cparse_control_bcr
-cparse_control_throw=: 0&cparse_control_bcr
 
-NB. unsupported items: goto label
+NB. unsupported items: goto label, and throw which may have no effect
 NB. ignore them
+NB. 
 cparse_control_goto=: 3 : 0
 NB. consume the control word and continue
 readblock ''
 y , <0 2$a:
 )
 cparse_control_label=: cparse_control_goto
+cparse_control_throw=: cparse_control_goto
 
 NB. handle the NB.?lint... lines
 NB. Each of these is a one-off
