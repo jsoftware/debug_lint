@@ -798,7 +798,8 @@ end.
 NB. Remove any nugatories from the error list.  They are OK, since they contributed to this T block
 nugatories=: nugatories -. 1 {:: r
 
-NB. Init the block where we accumulate variables for this structure
+NB. Init the block where we accumulate variables for this structure.  Initialize to
+NB. the values set in the first T block, which is always executed
 'b1ivars b1bvars b1rvars'=. 3$<0 3$a:
 NB.?lintonly 'b2ivars b2bvars b2rvars' =. 3$<0 3$a:
 
@@ -816,10 +817,10 @@ NB. if the previous T-block was empty, this is dead code.  Give a warning
   if. emptytblock do.
     emsgs=. emsgs , (0{r) , < 'the rest of this select statement will not be executed'
   end.
-NB. T-block processing, as above
+NB. T-block processing, as above, but keeping names defined in the T-blocks as they are encounterd
   emptytblock=. (<'do') -: peekblock''
   tivars=. tivars addnames '$NNU' ; ($0) ;< 2#<$0
-  if. 1 >: #'tivars tbvars trvars nemsgs'=. cparse_statement tivars;bvars;<rvars do. a: return. end.
+  if. 1 >: #'tivars tbvars trvars nemsgs'=. cparse_statement tivars;tbvars;<trvars do. a: return. end.
   emsgs=. emsgs , nemsgs
   if. 'do' -.@-: 1 {:: r=. readblock'' do. a: return. end.
   if. 0 ~: # 0 {:: r=. 1{:: ('';<tivars) lookupname <'$NNU' do.
