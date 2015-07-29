@@ -6,6 +6,7 @@ NB.  lint    check a file
 NB.  exppatt regex pattern for finding explicit definitions
 
 NB. TODO:
+NB. ARGVVERB__ doesn't find ARGVVERB_z_ set in previous line
 NB. bug: a__b__c will find local b, but only b in c should be found
 NB. translate internal names back into primitives for postmortem
 NB. check for side effect of inverse
@@ -38,15 +39,17 @@ rem form end;
 
 lintwindow =: 3 : 0  NB. Run lint on current window, used in J8 function keys
 NB.?lintonly WinText_jqtide_ =. ''
-if. 'edit' -: wd 'sm get active' do.  NB. If user is in an edit window
+smoutput wd 'sm get active'
+if. (;: 'edit edit2') e.~ <wd 'sm get active' do.  NB. If user is in an edit window
   if. #fd =. wd :: (''"_) 'sm get edit' do.  NB. See which file is being edited
-    fn =. (1&{"1 fd) {~ (0&{"1 fd) i. <'file'  NB. fetch filename
-    ft =. > (1&{"1 fd) {~ (0&{"1 fd) i. <'text'  NB. fetch filedata
-    if. ft -.@-: WinText_jqtide_ do.
-      smoutput 'WinText incorrectly set!'
+    if. \: 8 4 6 ,:~ _3 {. 0&".;._2 '.' ,~ LF taketo 'Library:' takeafter JVERSION do.
+      wdinfo 'Upgrade required';'The lint function key requires J8.04 or later.'
+    else.
+      fn =. > (1&{"1 fd) {~ (0&{"1 fd) i. <'file'  NB. fetch filename
+      wd 'sm save edit'
+      smoutput '   lint ',5!:5 <'fn'
+      lint <fn
     end.
-    ft 1!:2 fn  NB. Flush file to disk
-    lint fn
   end.
 end.
 i. 0 0
@@ -1100,14 +1103,19 @@ select. t=. 4!:0 y
 end.
 )
 
-NB. x is current locale;table of defined names;type;value
+NB. x is current locale;(table of defined names;type;value)
 NB. y is boxed name, possibly with object references
 NB. We go through the object references and resolve to a single name, with locale added in the case of object ref
 NB. Result is boxed name, or boxed empty if error in locale resolution
 analyzename=: 4 : 0"1 0
-NB. Split the name on __.  If there aren't any, or if the string ended with __, there is no locale:
-NB. just keep the original name
-if. 0 = # > {: }. qname=. (<@(2&}.);.1~ '__'&E.) '__' , > y do. y return. end.
+NB. Split the name on __.  If there aren't any, or if the string ended with __, there is no object locale:
+NB. keep the original name, except replace final __ with _base_
+if. 0 = # > {: }. qname=. (<@(2&}.);.1~ '__'&E.) '__' , > y do.
+  if. 0 = # > {: qname do. ('_base_' ,~ _2&}.)&.> y 
+  else. y
+  end.
+  return.
+end.
 NB. process the names starting from the end.  Each name except the last must result in a boxed string, which becomes the new locale
 NB. start off by using the current locale as if it had come from a typeval
 'loc defnames'=. x
@@ -1987,7 +1995,7 @@ NB. Evaluate the right operand.  If it is nonnumeric, ignore it and produce an u
   v=. ((<1 1) { y) 5!:0   NB.?lintonly v =. ''
   if. 0 1 4 -.@e.~ 3!:0 v do.
 NB. catch the special case of m : ''.  This is how an empty explicit shows up.  If
-NB. we have one of those, say that it has no valences
+NB. we have one of those, say that it has no valences.
     ((invmonad * 3 * v -: '')+sideeff+((0 1 2 3 i. u){(noun,adv,conj,verb,verb)));''   NB. 3 4 13, all verbs
 NB. If the right value is 0, we know nothing, just produce sideeffectful unknown
   elseif. v = 0 do.
