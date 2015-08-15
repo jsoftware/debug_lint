@@ -6,7 +6,6 @@ NB.  lint    check a file
 NB.  exppatt regex pattern for finding explicit definitions
 
 NB. TODO:
-NB. ARGVVERB__ doesn't find ARGVVERB_z_ set in previous line
 NB. bug: a__b__c will find local b, but only b in c should be found
 NB. translate internal names back into primitives for postmortem
 NB. check for side effect of inverse
@@ -39,7 +38,6 @@ rem form end;
 
 lintwindow =: 3 : 0  NB. Run lint on current window, used in J8 function keys
 NB.?lintonly WinText_jqtide_ =. ''
-smoutput wd 'sm get active'
 if. (;: 'edit edit2') e.~ <wd 'sm get active' do.  NB. If user is in an edit window
   if. #fd =. wd :: (''"_) 'sm get edit' do.  NB. See which file is being edited
     if. \: 8 4 6 ,:~ _3 {. 0&".;._2 '.' ,~ LF taketo 'Library:' takeafter JVERSION do.
