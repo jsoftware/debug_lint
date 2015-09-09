@@ -319,6 +319,38 @@ end.
 akwnshcgtus4kgh
 )
 
+NB. Names that are used for form events, depending on which word they're in
+formeventnames =: <;._2&.> ('close cancel ') ; (0 : 0)
+button
+select
+changed
+char
+resize
+paint
+focus
+focuslost
+mwheel
+initialize
+mmove
+mbldown
+mbldbl
+mblup
+mbrdown
+mbrdbl
+mbrup
+mbmdown
+mbmdbl
+mbmup
+bufferstatus
+duration
+error
+mediastatus
+playstate
+position
+volume
+curl
+)
+
 NB. Check an explicit definition.  Split it into monadic and dyadic parts, if any,
 NB. and check each valence with the appropriate initial defined names
 NB. y is name;starting line;lines of entity
@@ -340,6 +372,20 @@ NB. split into valences
 valences=. (<,':')&([ ((-: -.&' ')&> <;._1 ]) ,) lines
 NB. Create the list of  starting variables
 stvbls=. (defnames , {&startvbls)&.> (#valences) {. exptype { 4 2 $ 1 2 3 ;0 1 2 3;1 2 3 4 5;0 1 2 3 4 5;1;0 1;0 1;$0
+NB. If the name looks like a form event, define the names associated with the form,
+NB. if there are any
+NB. Split the name on _; there should be 2 or 3 names
+if. 3 4 e.~ #fmnm =. <;._2 name do.
+  NB. See if the last name is a handler name in its position
+  if. (_2 { fmnm) e. (_3 + #fmnm) {:: formeventnames do.
+    NB. It might be a form event.  The last part of the name fits
+    if. 1 < #$formvars =. (stvbls) createformnames (toupper&.> {. fmnm) , (<<<0 _1) { fmnm do.
+      NB. No error looking up the form, so append the form vars
+      stvbls =. addnames&formvars&.> stvbls
+    end.
+  end.
+end.
+
 NB. get vbls , emsgs for each valence
 ve=. (((>: lineno + |.!.0 >:@#@> valences),.(exptype>:2)) ;"1 0 stvbls) checkvalence valences
 
@@ -939,26 +985,9 @@ select. ' ' taketo cw
   case. 'NB.?lintformnames' do.
   NB. the operand of the directive is the name of a form.  Extract the name and look it up
     formname=. ' ' -.~ ' ' takeafter cw
-    if. 1 = #formvalue=. ((loc=. 1 { ('';{.ibr) lookupname <'$LOC'),{.ibr) lookupname <formname do.
-      emsgs=. emsgs , lineno ; 'Form name is undefined'
-    elseif. noun ~: 0 {:: formvalue do.
-      emsgs=. emsgs , lineno ; 'Form is not a noun'
-    elseif. do.
-      formvalue=. (1 { formvalue) 5!:0
-  NB. Extract the child controls and their type.  This is rough and ready.
-  NB. cut to words
-      formlines=. (3 {. ;: :: (a:"_));._1 ';' , CRLF -.~ formvalue
-  NB. keep only 'cc' lines
-      formlines=. (#~ (<'cc') = {."1) formlines
-  NB. keep only the controls that define variables
-      varctls=. ;: 'checkbox combobox combodrop combolist edit editm listbox radiobutton scrollbar scrollbarv richedit richeditm spin spinv tab trackbar trackbarv'
-      formlines=. (#~ varctls e.~ 2&{"1) formlines
-  NB. for the variables that create a _select name, create that name
-      selectctls=.  ;: 'combobox combodrop combolist edit editm listbox richedit richeditm'
-      formlines=. (,   [: ,&'_select'&.> (#~ selectctls e.~ 2&{"1)) formlines
-  NB. Now item 1 of each row has the names to be defined.  Give them a value of an empty string in the selected locale, and define the names
-      formval=. ''
-      formvars=. (('_' ([,],[)&.> loc) ,~&.> 1 {"1 formlines) ,"0 1 (0) typeval <'formval'
+    if. 1 >: #$formvars =. ibr createformnames <formname do.
+      emsgs=. emsgs , lineno ;"0 formvars
+    else.
       ibr=. (<(0 {:: ibr) addnames formvars) 0} ibr
     end.
   case. do.
@@ -966,6 +995,207 @@ select. ' ' taketo cw
 end.
 NB. Return with line status unchanged
 ibr , <emsgs
+)
+
+NB. Table of events for each type of control
+NB. format is  controlname suffix
+NB. where suffix is the value to append to the controlname to get the name of the defined variable
+eventctlvariables =: 3&({.!.(<''))@(<;._2)@(,&'-');._2 (0 : 0)
+checkbox--0
+combobox
+combolist
+combodrop
+combobox-_select-_1
+combolist-_select-_1
+combodrop _select _1
+dial--0
+dateedit--20150101
+dspinbox--0
+edit-- 
+edit-_select-0 0
+edith-- 
+edith-_select-0 0
+edith-_scroll-0
+editm-- 
+editm-_select-0 0
+editm-_scroll-0
+listbox
+listbox-_select-_1
+radiobutton--0
+scrollbar--0
+slider--0
+spinbox--0
+tab
+tab-_select-_1
+timeedit--81520.23
+richedit
+richeditm
+scrollbarv
+spin
+spinv
+trackbar
+trackbarv
+)
+NB. These are the controls that create names that do not include the childcontrolname
+NB. They use childclass and event rather than controlname
+NB. lines are childclass;event;vblname;value
+eventvariables =: ;:;._2 (0 : 0)
+isidraw char sysdata a
+isidraw char sysmodifiers 0 0
+isidraw mwheel sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mwheel sysmodifiers 0 0
+isidraw mmove sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mmove sysmodifiers 0 0
+isidraw mbldown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbldown sysmodifiers 0 0
+isidraw mbldbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbldbl sysmodifiers 0 0
+isidraw mblup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mblup sysmodifiers 0 0
+isidraw mbmdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbmdown sysmodifiers 0 0
+isidraw mbmdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbmdbl sysmodifiers 0 0
+isidraw mbmup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbmup sysmodifiers 0 0
+isidraw mbrdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbrdown sysmodifiers 0 0
+isidraw mbrdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbrdbl sysmodifiers 0 0
+isidraw mbrup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isidraw mbrup sysmodifiers 0 0
+isigraph char sysdata a
+isigraph char sysmodifiers 0 0
+isigraph mwheel sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mwheel sysmodifiers 0 0
+isigraph mmove sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mmove sysmodifiers 0 0
+isigraph mbldown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbldown sysmodifiers 0 0
+isigraph mbldbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbldbl sysmodifiers 0 0
+isigraph mblup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mblup sysmodifiers 0 0
+isigraph mbmdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbmdown sysmodifiers 0 0
+isigraph mbmdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbmdbl sysmodifiers 0 0
+isigraph mbmup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbmup sysmodifiers 0 0
+isigraph mbrdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbrdown sysmodifiers 0 0
+isigraph mbrdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbrdbl sysmodifiers 0 0
+isigraph mbrup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+isigraph mbrup sysmodifiers 0 0
+multimedia bufferstatus sysdata 50
+multimedia duration sysdata 10000
+multimedia error sysdata error
+multimedia mediastatus sysdata status
+multimedia playstate sysdata stopped
+multimedia position sysdata 0
+multimedia volume sysdata 50
+opengl char sysdata a
+opengl char sysmodifiers 0 0
+opengl mwheel sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mwheel sysmodifiers 0 0
+opengl mmove sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mmove sysmodifiers 0 0
+opengl mbldown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbldown sysmodifiers 0 0
+opengl mbldbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbldbl sysmodifiers 0 0
+opengl mblup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mblup sysmodifiers 0 0
+opengl mbmdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbmdown sysmodifiers 0 0
+opengl mbmdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbmdbl sysmodifiers 0 0
+opengl mbmup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbmup sysmodifiers 0 0
+opengl mbrdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbrdown sysmodifiers 0 0
+opengl mbrdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbrdbl sysmodifiers 0 0
+opengl mbrup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+opengl mbrup sysmodifiers 0 0
+webview char sysdata a
+webview char sysmodifiers 0 0
+webview mwheel sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mwheel sysmodifiers 0 0
+webview mmove sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mmove sysmodifiers 0 0
+webview mbldown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbldown sysmodifiers 0 0
+webview mbldbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbldbl sysmodifiers 0 0
+webview mblup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mblup sysmodifiers 0 0
+webview mbmdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbmdown sysmodifiers 0 0
+webview mbmdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbmdbl sysmodifiers 0 0
+webview mbmup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbmup sysmodifiers 0 0
+webview mbrdown sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbrdown sysmodifiers 0 0
+webview mbrdbl sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbrdbl sysmodifiers 0 0
+webview mbrup sysdata 0 0 0 0 0 0 0 0 0 0 0 0
+webview mbrup sysmodifiers 0 0
+)
+
+
+NB. Create list of form names to be defined for the current verb
+NB. x is internal variables
+NB. y is formname[;controlname[;eventname]]
+NB. If the form is not defined as a noun, return a boxed emsg
+NB. Otherwise return a table of the names to be defined, suitable for addnames
+createformnames =: 4 : 0
+ibr =. x
+formname =. y
+if. 1 = #formvalue=. ((loc=. 1 { ('';{.ibr) lookupname <'$LOC'),{.ibr) lookupname {. formname do.
+  <'Form name is undefined' return.
+elseif. noun ~: 0 {:: formvalue do.
+  <'Form is not a noun' return.
+elseif. do.
+  formvalue=. (1 { formvalue) 5!:0
+  NB. Extract the child controls and their type.  This is rough and ready.
+  NB. cut to words
+  formlines=. (3 {. ;: :: (a:"_));._1 ';' , CRLF -.~ formvalue
+  NB. keep only 'cc' lines
+  formlines=. (#~ (<'cc') = {."1) formlines
+  NB. For the lines that define variables including childname, create the variable including childname
+    NB. and, wdq is always defined - in wdhandler
+  NB. producing name1;name2;value (if empty value, use undefined)
+  defnameval =.  ('wdq';'';'') , ; <@(,.   (}."1 eventctlvariables) #~ ({."1 eventctlvariables)&=)/"1 (1 2) {"1 formlines
+  NB. Assign the value, or undefined if no value
+  varnames =. (('_' ([,],[)&.> loc) ,~&.> ,&.>/"1 (2) {. "1 defnameval)
+  varvalues =. (3 : '0 typeval <''y'''@>)`(noun&;)@.(a:&=)"0 (2) {"1 defnameval
+  formvars =. varnames ,. varvalues
+  if. 2 < #formname do.
+    NB. Similarly, but for the names that do not include childname - for the current control-type only
+    NB. Translate the controlname to its childclass
+    childcc =. (a: ,~ 2 {"1 formlines) {~ (1 {"1 formlines) i. 1 { formname
+    NB. Look up childclass;event producing name;value
+    defnameval =. (2 3 {"1 eventvariables) #~ (0 1 {"1 eventvariables) -:"1 childcc , 2 { formname
+    varnames =. (('_' ([,],[)&.> loc) ,~&.> {."1 defnameval)
+    NB. Convert empty values to undefined
+    varvalues =. (3 : '0 typeval <''y'''@>)`(noun&;)@.(a:&=)"0 {:"1 defnameval
+    formvars =. formvars , varnames ,. varvalues
+  end.
+NB. obsolete   NB. keep only the controls that define variables
+NB. obsolete   varctls=. ;: 'checkbox combobox combodrop combolist edit editm listbox radiobutton scrollbar scrollbarv richedit richeditm spin spinv tab trackbar trackbarv'
+NB. obsolete   formlines=. (#~ varctls e.~ 2&{"1) formlines
+NB. obsolete   NB. for the variables that create a _select name, create that name
+NB. obsolete   selectctls=.  ;: 'combobox combodrop combolist edit editm listbox richedit richeditm'
+NB. obsolete   formlines=. (,   [: ,&'_select'&.> (#~ selectctls e.~ 2&{"1)) formlines
+NB. obsolete   NB. Now give the names a value of an empty string in the selected locale, and define the names
+NB. obsolete   formval=. ''   NB. should be undefined
+NB. obsolete   formvars=. (('_' ([,],[)&.> loc) ,~&.> 1 {"1 formlines) ,"0 1 (0) typeval <'formval'
+NB. obsolete   formvars=. (('_' ([,],[)&.> loc) ,~&.> defnames) ,"0 1 (0) typeval <'formval'
+end.
+formvars
 )
 
 NB. ********************** from here on is devoted to parsing J sentences ***************
