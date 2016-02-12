@@ -113,7 +113,7 @@ NB.- congratulatory message is typed; if errors are found, a grid is launched to
 NB.- if msglevel=0 (default), the error messages are emptied if a grid is displayed; if msglevel=1, the errors
 NB.- are always returned
 NB.-author: Henry H. Rich, August 2012
-NB.-eg: lint '~addons\math\misc\amoeba.ijs'
+NB.-eg: lint '~addons/math/misc/amoeba.ijs'
 lint=: 3 : 0
 0 lint y
 :
