@@ -1,6 +1,5 @@
 NB. general/misc/lint
 NB. check syntax of a script and load it
-NB. version: 1.12.2
 NB. main functions:
 NB.  lint    check a file
 NB.  exppatt regex pattern for finding explicit definitions
@@ -1160,6 +1159,7 @@ elseif. noun ~: 0 {:: formvalue do.
   <'Form is not a noun' return.
 elseif. do.
   formvalue=. (1 { formvalue) 5!:0
+  NB.?lintonly formvalue =. '' 
   NB. Extract the child controls and their type.  This is rough and ready.
   NB. cut to words
   formlines=. (3 {. ;: :: (a:"_));._1 ';' , CRLF -.~ formvalue
