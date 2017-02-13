@@ -1,6 +1,6 @@
 NB. manifest for lint
 CAPTION=: 'Load a script and check its syntax'
-VERSION=: '1.18.11'
+VERSION=: '1.18.12'
 PLATFORMS=: ''
 FILES=: 0 : 0
 lint.ijs

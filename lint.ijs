@@ -262,7 +262,7 @@ NB. If there is a long line, truncate it and make a note in the error messages
       esfn=. esfn , LF , 'Lines displayed here are truncated to ' , (":MAXLINELEN) , ' characters'
       lines=. ({.~   MAXLINELEN <. #)&.> lines
     end.
-    textlines=. (ecount;esfn) , ((1&{"1 emsgs) (0&{::"1 emsgs)} (#lines) # <'') ,. lines
+    textlines=. (ecount;esfn) , ((1&{"1 emsgs) ((<:#lines) <. 0&{::"1 emsgs)} (#lines) # <'') ,. lines
     if. IFGUI = 1 do.
       gridopts=. ,: 'CELLCOLORS';0 0 0 240 240 240 ,: 255 0 0 240 240 240
       gridopts=. gridopts , 'CELLCOLOR';1 0
