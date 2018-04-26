@@ -5,7 +5,10 @@ PLATFORMS=: ''
 FILES=: 0 : 0
 lint.ijs
 )
-RELEASE=: 'j602 j701 j802 j803 j804 j805 j806 j807'
+RELEASE=: ''
+
+FOLDER=: 'debug/lint'
+
 DEPENDS=: 0 : 0
 )
 DESCRIPTION=: 0 : 0
