@@ -635,57 +635,63 @@ if. 1 >: #'b1ivars b1bvars b1rvars nemsgs'=. cparse_statement tivars;tbvars;<trv
 emsgs=. emsgs , nemsgs
 NB. Now we split depending on the form of the if statement.
 select. 1 {:: r=. readblock''   NB. consume the block-end
-  case. 'end' do.
+case. 'end' do.
   NB. if. do. end. - intersect the (modified) T block and the B block.  The only reason not to just take
   NB. the T block is that the NUG and NRE status needs to be combined, even if values cannot be.
   NB. Also, some known names may become unknown.  If the T block was empty, just keep the B block; except
   NB. when the b1ivars are empty: that means the block ended with break/return.  We shouldn't be doing anything
   NB. after that, but in case we do, we need to put something valid in the uivars
-    if. (-. emptytblock) +. (0 = #b1ivars) do. 'b1ivars b1bvars b1rvars'=. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
-  case. 'else' do.
+  if. (-. emptytblock) +. (0 = #b1ivars) do. 'b1ivars b1bvars b1rvars'=. (tivars;tbvars;<trvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
+case. 'else' do.
   NB. if. do. else. end. - intersect the two B blocks (we know we have to take one path or the other,
   NB.  and NNUs from the start of the if are included in each leg, so we don't need to bring them in.
   NB. but if empty T block, just use the b1 variables
   NB. process the else. block, keeping names defined in the T block
-    if. 1 >: #'b2ivars b2bvars b2rvars nemsgs'=. cparse_statement tivars;tbvars;<trvars do. a: return. end.
-    emsgs=. emsgs , nemsgs
-    if. -. emptytblock do. 'b1ivars b1bvars b1rvars'=. (b2ivars;b2bvars;<b2rvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
+  if. 1 >: #'b2ivars b2bvars b2rvars nemsgs'=. cparse_statement tivars;tbvars;<trvars do. a: return. end.
+  emsgs=. emsgs , nemsgs
+  if. -. emptytblock do. 'b1ivars b1bvars b1rvars'=. (b2ivars;b2bvars;<b2rvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
   NB. We'd better be at en end - consume it
-    if. 'end' -.@-: 1 {:: r=. readblock'' do. a: return. end.
-  case. 'elseif' do.
+  if. 'end' -.@-: 1 {:: r=. readblock'' do. a: return. end.
+case. 'elseif' do.
   NB. if. do. elseif do. ... process all the elseifs, incrementally growing the table of T-block-defined
   NB. variables.  Before processing each T, clear the NNU; before processing each B, reset the NNU to the
   NB. values before the T-block started.  Combine the B blocks as we go along.  At the end, if the last T-block
   NB. was empty, we can use the final B block.  If not, we have to intersect it with the final T value, which
   NB. must include restoring the initial NNU value, to account for the possibility that no B block was executed.
-    while. do.
-  NB. if the previous T-block was empty, this is dead code.  Give a warning
-      if. emptytblock do.
-        emsgs=. emsgs , (0{r) , < 'the rest of this if-statement will not be executed'
-      end.
-  NB. T-block processing, as above
-      emptytblock=. (<'do') -: peekblock''
-      tivars=. tivars addnames '$NNU' ; ($0) ;< 2#<$0
-      if. 1 >: #'tivars tbvars trvars nemsgs'=. cparse_statement tivars;bvars;<rvars do. a: return. end.
-      emsgs=. emsgs , nemsgs
-      if. 'do' -.@-: 1 {:: r=. readblock'' do. a: return. end.
-      if. 0 ~: # 0 {:: r=. 1{:: ('';<tivars) lookupname <'$NNU' do.
-        emsgs=. emsgs , (0{::r) ;"0 < 'the test block must produce a noun value'
-      end.
-      nugatories=: nugatories -. 1 {:: r
-  NB. now the B block, as above.  We have added to the T block, but we must reset the NNU
-      tivars=. tivars addnames '$NNU' ; ($0) ;< startnnu
+  while. do.
+    NB. if the previous T-block was empty, this is dead code.  Give a warning
+    if. emptytblock do.
+      emsgs=. emsgs , (0{r) , < 'the rest of this if-statement will not be executed'
+    end.
+    NB. T-block processing, as above
+    emptytblock=. (<'do') -: peekblock''
+    tivars=. tivars addnames '$NNU' ; ($0) ;< 2#<$0
+    if. 1 >: #'tivars tbvars trvars nemsgs'=. cparse_statement tivars;bvars;<rvars do. a: return. end.
+    emsgs=. emsgs , nemsgs
+    if. 'do' -.@-: 1 {:: r=. readblock'' do. a: return. end.
+    if. 0 ~: # 0 {:: r=. 1{:: ('';<tivars) lookupname <'$NNU' do.
+      emsgs=. emsgs , (0{::r) ;"0 < 'the test block must produce a noun value'
+    end.
+    nugatories=: nugatories -. 1 {:: r
+    NB. now the B block, as above.  We have added to the T block, but we must reset the NNU
+    tivars=. tivars addnames '$NNU' ; ($0) ;< startnnu
+    if. 1 >: #'b2ivars b2bvars b2rvars nemsgs'=. cparse_statement tivars;tbvars;<trvars do. a: return. end.
+    emsgs=. emsgs , nemsgs
+  NB. Accumulate variables into the B1 blocks
+    'b1ivars b1bvars b1rvars'=. (b2ivars;b2bvars;<b2rvars) namesintersect (b1ivars;b1bvars;<b1rvars)
+    NB. consume the next word, and remember it in case we loop back.  If it's end, we're done.  If it's
+    NB. elseif, loop around.
+    NB. otherwise abort with control error
+    select. 1 {:: r=. readblock''
+    case. 'else' do.
+      NB. else. following elseif. - treat just like if. do. else.   Must be followed by end (we fall through to end processing)
       if. 1 >: #'b2ivars b2bvars b2rvars nemsgs'=. cparse_statement tivars;tbvars;<trvars do. a: return. end.
       emsgs=. emsgs , nemsgs
-  NB. Accumulate variables into the B1 blocks
-      'b1ivars b1bvars b1rvars'=. (b2ivars;b2bvars;<b2rvars) namesintersect (b1ivars;b1bvars;<b1rvars)
-  NB. consume the next word, and remember it in case we loop back.  If it's end, we're done.  If it's
-  NB. elseif, loop around.
-  NB. otherwise abort with control error
-    select. 1 {:: r=. readblock''
-      case. 'end' do. break.
-      case. 'elseif' do.
-      case. do. a: return.
+      if. -. emptytblock do. 'b1ivars b1bvars b1rvars'=. (b2ivars;b2bvars;<b2rvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
+      if. 'end' -.@-: 1 {:: r=. readblock'' do. a: return. end.
+    fcase. 'end' do. break.
+    case. 'elseif' do.
+    case. do. a: return.
     end.
   end.
 NB. We have processed up to the end statement.  Now, if there is a possible path through just the
