@@ -683,13 +683,13 @@ case. 'elseif' do.
     NB. elseif, loop around.
     NB. otherwise abort with control error
     select. 1 {:: r=. readblock''
-    case. 'else' do.
+    fcase. 'else' do.
       NB. else. following elseif. - treat just like if. do. else.   Must be followed by end (we fall through to end processing)
       if. 1 >: #'b2ivars b2bvars b2rvars nemsgs'=. cparse_statement tivars;tbvars;<trvars do. a: return. end.
       emsgs=. emsgs , nemsgs
       if. -. emptytblock do. 'b1ivars b1bvars b1rvars'=. (b2ivars;b2bvars;<b2rvars) namesintersect (b1ivars;b1bvars;<b1rvars) end.
       if. 'end' -.@-: 1 {:: r=. readblock'' do. a: return. end.
-    fcase. 'end' do. break.
+    case. 'end' do. break.
     case. 'elseif' do.
     case. do. a: return.
     end.
